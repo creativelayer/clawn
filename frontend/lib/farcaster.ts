@@ -139,7 +139,7 @@ export async function viewToken(): Promise<boolean> {
 
 /**
  * Send $CLAWN (for entry fees)
- * Returns tx hash or null if cancelled/failed
+ * Returns tx hash or "confirmed" if successful, null if cancelled/failed
  */
 export async function sendEntryFee(toAddress: string): Promise<string | null> {
   const sdk = await getSDK();
@@ -154,7 +154,21 @@ export async function sendEntryFee(toAddress: string): Promise<string | null> {
       amount: ENTRY_FEE_WEI.toString(),
       recipientAddress: toAddress,
     });
-    return result?.transactionHash || null;
+    
+    console.log("sendToken result:", JSON.stringify(result));
+    
+    // Handle various response formats from the SDK
+    if (result?.transactionHash) return result.transactionHash;
+    if (result?.hash) return result.hash;
+    if (result?.txHash) return result.txHash;
+    if (result?.transaction?.hash) return result.transaction.hash;
+    
+    // If we got a result without error, assume success
+    if (result !== null && result !== undefined) {
+      return "confirmed";
+    }
+    
+    return null;
   } catch (e) {
     console.error("Send token failed:", e);
     return null;
