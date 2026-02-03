@@ -118,24 +118,10 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServerClient();
 
+    // Get roasts
     const { data: roasts, error } = await supabase
       .from("roasts")
-      .select(`
-        id,
-        round_id,
-        fid,
-        text,
-        ai_score,
-        ai_feedback,
-        votes,
-        rank,
-        created_at,
-        users (
-          username,
-          display_name,
-          pfp_url
-        )
-      `)
+      .select("*")
       .eq("round_id", roundId)
       .order("ai_score", { ascending: false, nullsFirst: false })
       .order("votes", { ascending: false })
@@ -146,20 +132,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch roasts" }, { status: 500 });
     }
 
-    // Flatten user data
-    const formatted = roasts.map((r: any) => ({
-      id: r.id,
-      roundId: r.round_id,
-      fid: r.fid,
-      text: r.text,
-      aiScore: r.ai_score,
-      aiFeedback: r.ai_feedback,
-      votes: r.votes,
-      rank: r.rank,
-      createdAt: r.created_at,
-      authorName: r.users?.display_name || r.users?.username || `fid:${r.fid}`,
-      authorPfp: r.users?.pfp_url || "",
-    }));
+    // Get user info for all fids
+    const fids = [...new Set(roasts.map((r: any) => r.fid))];
+    const { data: users } = fids.length > 0 
+      ? await supabase.from("users").select("*").in("fid", fids)
+      : { data: [] };
+    
+    const userMap = new Map((users || []).map((u: any) => [u.fid, u]));
+
+    // Format response
+    const formatted = roasts.map((r: any) => {
+      const user = userMap.get(r.fid);
+      return {
+        id: r.id,
+        roundId: r.round_id,
+        fid: r.fid,
+        text: r.text,
+        aiScore: r.ai_score,
+        aiFeedback: r.ai_feedback,
+        votes: r.votes,
+        rank: r.rank,
+        createdAt: r.created_at,
+        authorName: user?.display_name || user?.username || `fid:${r.fid}`,
+        authorPfp: user?.pfp_url || "",
+      };
+    });
 
     return NextResponse.json(formatted);
   } catch (e) {
