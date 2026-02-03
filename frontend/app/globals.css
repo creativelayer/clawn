@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --clown-bg: #0d0015;
+  --clown-pink: #ff2d78;
+  --clown-yellow: #ffe156;
+  --clown-purple: #b44aff;
+  --clown-bg-light: #1a0030;
+}
+
+body {
+  background-color: var(--clown-bg);
+  color: white;
+  min-height: 100dvh;
+}
+
+/* Neon glow utilities */
+.glow-pink {
+  text-shadow: 0 0 10px var(--clown-pink), 0 0 40px var(--clown-pink);
+}
+
+.glow-yellow {
+  text-shadow: 0 0 10px var(--clown-yellow), 0 0 40px var(--clown-yellow);
+}
+
+.glow-purple {
+  text-shadow: 0 0 10px var(--clown-purple), 0 0 40px var(--clown-purple);
+}
+
+.btn-primary {
+  @apply bg-clown-pink text-white font-bold py-3 px-6 rounded-xl transition-all;
+  box-shadow: 0 0 20px rgba(255, 45, 120, 0.4);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 30px rgba(255, 45, 120, 0.6);
+  @apply scale-105;
+}
+
+.card {
+  @apply bg-clown-bg-light border border-clown-purple/30 rounded-2xl p-4;
+}

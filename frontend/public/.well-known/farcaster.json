@@ -1,0 +1,17 @@
+{
+  "accountAssociation": {
+    "header": "PLACEHOLDER — Paul needs to generate this with his custody address",
+    "payload": "PLACEHOLDER",
+    "signature": "PLACEHOLDER"
+  },
+  "frame": {
+    "version": "1",
+    "name": "Clown Roast Battle",
+    "iconUrl": "https://placeholder.com/clown-icon.png",
+    "homeUrl": "https://clownroastbattle.xyz",
+    "imageUrl": "https://placeholder.com/clown-og.png",
+    "splashImageUrl": "https://placeholder.com/clown-splash.png",
+    "splashBackgroundColor": "#0d0015",
+    "webhookUrl": "https://clownroastbattle.xyz/api/webhook"
+  }
+}
