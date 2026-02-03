@@ -1,8 +1,8 @@
 {
   "accountAssociation": {
-    "header": "eyJmaWQiOjEyMzQ1LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4Li4uIn0",
-    "payload": "eyJkb21haW4iOiJjbGF3bi1vMGg0MzJkOWgtY3JlYXRpdmUtbGF5ZXItcHJvamVjdHMtYjdiNmI1ZjkudmVyY2VsLmFwcCJ9",
-    "signature": "PLACEHOLDER_NEEDS_PAUL_SIGNATURE"
+    "header": "NEEDS_SIGNING",
+    "payload": "NEEDS_SIGNING",
+    "signature": "NEEDS_SIGNING"
   },
   "frame": {
     "version": "1",
@@ -10,8 +10,8 @@
     "iconUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/icon.png",
     "homeUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app",
     "imageUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/og-image.png",
+    "buttonTitle": "Enter the Ring",
     "splashImageUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/splash.png",
-    "splashBackgroundColor": "#0d0015",
-    "webhookUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/api/webhook"
+    "splashBackgroundColor": "#0d0015"
   }
 }

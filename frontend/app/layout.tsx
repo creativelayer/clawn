@@ -6,6 +6,22 @@ import { FarcasterProvider } from "@/components/FarcasterProvider";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app";
 
+// Mini App embed metadata - MUST use fc:miniapp (not fc:frame) and version "1" (not "next")
+const miniAppEmbed = {
+  version: "1",
+  imageUrl: `${APP_URL}/og-image.png`,
+  button: {
+    title: "🤡 Enter the Ring",
+    action: {
+      type: "launch_frame",
+      name: "Clown Roast Battle",
+      url: APP_URL,
+      splashImageUrl: `${APP_URL}/splash.png`,
+      splashBackgroundColor: "#0d0015",
+    },
+  },
+};
+
 export const metadata: Metadata = {
   title: "Clown Roast Battle 🤡🔥",
   description: "The on-chain roast battle powered by $CLAWN on Base",
@@ -15,20 +31,8 @@ export const metadata: Metadata = {
     images: [`${APP_URL}/og-image.png`],
   },
   other: {
-    "fc:frame": JSON.stringify({
-      version: "next",
-      imageUrl: `${APP_URL}/og-image.png`,
-      button: {
-        title: "🤡 Enter the Ring",
-        action: {
-          type: "launch_frame",
-          name: "Clown Roast Battle",
-          url: APP_URL,
-          splashImageUrl: `${APP_URL}/splash.png`,
-          splashBackgroundColor: "#0d0015",
-        },
-      },
-    }),
+    // Use fc:miniapp for Mini Apps (NOT fc:frame which is legacy)
+    "fc:miniapp": JSON.stringify(miniAppEmbed),
   },
 };
 
