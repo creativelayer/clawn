@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import { FarcasterProvider } from "@/components/FarcasterProvider";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app";
 
-// Mini App embed metadata - MUST use fc:miniapp (not fc:frame) and version "1" (not "next")
+// Mini App embed metadata
 const miniAppEmbed = {
   version: "1",
   imageUrl: `${APP_URL}/og-image.png`,
@@ -31,7 +30,6 @@ export const metadata: Metadata = {
     images: [`${APP_URL}/og-image.png`],
   },
   other: {
-    // Use fc:miniapp for Mini Apps (NOT fc:frame which is legacy)
     "fc:miniapp": JSON.stringify(miniAppEmbed),
   },
 };
@@ -39,25 +37,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        {/* Load Farcaster SDK via CDN and call ready() immediately */}
-        <Script 
-          src="https://cdn.jsdelivr.net/npm/@farcaster/miniapp-sdk@0.2.2/dist/index.min.js"
-          strategy="beforeInteractive"
-        />
-        <Script id="fc-ready" strategy="beforeInteractive">
-          {`
-            (function checkAndCallReady() {
-              if (typeof miniapp !== 'undefined' && miniapp.sdk) {
-                miniapp.sdk.actions.ready();
-                console.log('[FC] ready() called via CDN SDK');
-              } else {
-                setTimeout(checkAndCallReady, 10);
-              }
-            })();
-          `}
-        </Script>
-      </head>
       <body className="font-sans antialiased">
         <FarcasterProvider>
           <main className="max-w-lg mx-auto px-4 pt-4 pb-20 min-h-screen">
