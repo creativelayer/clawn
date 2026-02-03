@@ -1,13 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from "react";
 import {
   FarcasterUser,
-  initSDK,
-  signIn as fcSignIn,
   getWalletAddress,
   getClawnBalance,
   formatClawn,
+  signIn as fcSignIn,
 } from "@/lib/farcaster";
 
 interface FarcasterState {
@@ -42,28 +41,57 @@ export function FarcasterProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [clawnBalance, setClawnBalance] = useState<bigint>(0n);
+  const readyCalled = useRef(false);
 
-  // Initialize SDK on mount
+  // Call ready() IMMEDIATELY on mount - this is critical!
   useEffect(() => {
+    if (readyCalled.current) return;
+    readyCalled.current = true;
+
     async function init() {
       try {
-        const context = await initSDK();
-        if (context) {
-          setUser(context.user);
-          setIsInFrame(context.isInFrame);
+        // Dynamic import the SDK
+        const { sdk } = await import("@farcaster/miniapp-sdk");
+        
+        // Call ready FIRST - before anything else
+        console.log("[Farcaster] Calling sdk.actions.ready()");
+        await sdk.actions.ready();
+        console.log("[Farcaster] Ready called successfully");
 
-          // Get wallet address
-          const addr = await getWalletAddress();
-          setWalletAddress(addr);
+        // Now get context
+        const context = await sdk.context;
+        console.log("[Farcaster] Context:", context);
 
-          // Get balance if we have an address
-          if (addr) {
-            const bal = await getClawnBalance(addr);
-            setClawnBalance(bal);
+        if (context?.user) {
+          setUser({
+            fid: context.user.fid,
+            username: context.user.username,
+            displayName: context.user.displayName,
+            pfpUrl: context.user.pfpUrl,
+          });
+        }
+        
+        setIsInFrame(true);
+
+        // Get wallet address
+        try {
+          const provider = await sdk.wallet.getEthereumProvider();
+          if (provider) {
+            const accounts = await provider.request({ method: "eth_accounts" });
+            const addr = accounts?.[0] || null;
+            setWalletAddress(addr);
+
+            if (addr) {
+              const bal = await getClawnBalance(addr);
+              setClawnBalance(bal);
+            }
           }
+        } catch (walletErr) {
+          console.warn("[Farcaster] Wallet access failed:", walletErr);
         }
       } catch (e) {
-        console.error("Farcaster init error:", e);
+        console.warn("[Farcaster] SDK init failed (not in frame?):", e);
+        setIsInFrame(false);
       } finally {
         setIsLoading(false);
       }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import { FarcasterProvider } from "@/components/FarcasterProvider";
+import { FarcasterReady } from "@/components/FarcasterReady";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app";
 
@@ -35,6 +36,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="font-sans antialiased">
+        {/* FarcasterReady MUST be first - calls sdk.actions.ready() */}
+        <FarcasterReady />
         <FarcasterProvider>
           <main className="max-w-lg mx-auto px-4 pt-4 pb-20 min-h-screen">
             {children}
