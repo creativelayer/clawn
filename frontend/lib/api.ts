@@ -1,23 +1,28 @@
-// Backend API client with mock data fallbacks
+// Backend API client - calls our Next.js API routes
 
 export interface Round {
   id: string;
   theme: string;
+  startsAt: string;
   endsAt: string;
   prizePool: number;
   entryCount: number;
-  status: "active" | "voting" | "ended";
+  status: "upcoming" | "active" | "judging" | "ended";
+  winnerFid?: number;
 }
 
 export interface Roast {
   id: string;
   roundId: string;
-  authorFid: number;
+  fid: number;
   authorName: string;
   authorPfp: string;
   text: string;
+  aiScore: number | null;
+  aiFeedback: string | null;
   votes: number;
-  rank?: number;
+  rank: number | null;
+  createdAt: string;
 }
 
 export interface LeaderboardEntry {
@@ -29,97 +34,100 @@ export interface LeaderboardEntry {
   title: string;
 }
 
-// --- Mock data ---
+// API base - empty for same-origin requests
+const API_BASE = "";
 
-const MOCK_ROUND: Round = {
-  id: "round-1",
-  theme: "Roast your own portfolio 🤡",
-  endsAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-  prizePool: 2_500_000,
-  entryCount: 47,
-  status: "active",
-};
-
-const MOCK_ROASTS: Roast[] = [
-  {
-    id: "r1",
-    roundId: "round-1",
-    authorFid: 1234,
-    authorName: "honkmaster.eth",
-    authorPfp: "",
-    text: "My portfolio is so red, even Pennywise wouldn't touch it. At least clowns get paid per gig — I'm doing this for free. 🤡",
-    votes: 142,
-    rank: 1,
-  },
-  {
-    id: "r2",
-    roundId: "round-1",
-    authorFid: 5678,
-    authorName: "degenella",
-    authorPfp: "",
-    text: "I bought the top so many times they named a circus tent after me.",
-    votes: 98,
-    rank: 2,
-  },
-  {
-    id: "r3",
-    roundId: "round-1",
-    authorFid: 9012,
-    authorName: "bozo.base",
-    authorPfp: "",
-    text: "My trading strategy? Buy high, sell low, blame the devs. Rinse and repeat like a clown car that keeps crashing.",
-    votes: 76,
-    rank: 3,
-  },
-];
-
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { fid: 1234, name: "honkmaster.eth", pfp: "", wins: 8, totalEarnings: 12_500_000, title: "Roast Master" },
-  { fid: 5678, name: "degenella", pfp: "", wins: 5, totalEarnings: 7_200_000, title: "Harlequin" },
-  { fid: 9012, name: "bozo.base", pfp: "", wins: 3, totalEarnings: 4_100_000, title: "Trickster" },
-  { fid: 3456, name: "jesterjesus", pfp: "", wins: 2, totalEarnings: 2_800_000, title: "Fool" },
-  { fid: 7890, name: "clownpilled", pfp: "", wins: 1, totalEarnings: 1_500_000, title: "Jester" },
-];
-
-// --- API functions ---
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-async function fetchOrMock<T>(path: string, mock: T): Promise<T> {
+export async function getActiveRound(): Promise<Round | null> {
   try {
-    const res = await fetch(`${API_URL}${path}`, { next: { revalidate: 30 } });
-    if (!res.ok) throw new Error(`${res.status}`);
+    const res = await fetch(`${API_BASE}/api/rounds/active`, {
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error(`${res.status}`);
+    }
     return res.json();
-  } catch {
-    return mock;
+  } catch (e) {
+    console.error("Failed to fetch active round:", e);
+    return null;
   }
 }
 
-export async function getActiveRound(): Promise<Round> {
-  return fetchOrMock("/api/rounds/active", MOCK_ROUND);
-}
-
-export async function getRoundResults(id: string): Promise<{ round: Round; roasts: Roast[] }> {
-  return fetchOrMock(`/api/rounds/${id}/results`, {
-    round: { ...MOCK_ROUND, id, status: "ended" },
-    roasts: MOCK_ROASTS,
-  });
-}
-
-export async function submitRoast(roundId: string, text: string, fid: number): Promise<{ id: string }> {
+export async function getRoundResults(
+  id: string
+): Promise<{ round: Round; roasts: Roast[] } | null> {
   try {
-    const res = await fetch(`${API_URL}/api/roasts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roundId, text, fid }),
+    const res = await fetch(`${API_BASE}/api/rounds/${id}/results`, {
+      next: { revalidate: 30 },
     });
     if (!res.ok) throw new Error(`${res.status}`);
     return res.json();
-  } catch {
-    return { id: `mock-${Date.now()}` };
+  } catch (e) {
+    console.error("Failed to fetch round results:", e);
+    return null;
+  }
+}
+
+export async function submitRoast(
+  roundId: string,
+  text: string,
+  fid: number,
+  txHash?: string,
+  userInfo?: {
+    username?: string;
+    displayName?: string;
+    pfpUrl?: string;
+    walletAddress?: string;
+  }
+): Promise<{ id: string } | { error: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/roasts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roundId,
+        text,
+        fid,
+        txHash,
+        ...userInfo,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { error: data.error || "Failed to submit roast" };
+    }
+
+    return data;
+  } catch (e) {
+    console.error("Failed to submit roast:", e);
+    return { error: "Network error. Please try again." };
+  }
+}
+
+export async function getRoasts(roundId: string): Promise<Roast[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/roasts?roundId=${roundId}`, {
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+    return res.json();
+  } catch (e) {
+    console.error("Failed to fetch roasts:", e);
+    return [];
   }
 }
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  return fetchOrMock("/api/leaderboard", MOCK_LEADERBOARD);
+  try {
+    const res = await fetch(`${API_BASE}/api/leaderboard`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) throw new Error(`${res.status}`);
+    return res.json();
+  } catch (e) {
+    console.error("Failed to fetch leaderboard:", e);
+    return [];
+  }
 }

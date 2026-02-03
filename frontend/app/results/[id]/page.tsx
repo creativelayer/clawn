@@ -1,10 +1,23 @@
 import { getRoundResults } from "@/lib/api";
 import PrizePool from "@/components/PrizePool";
 import ShareButton from "@/components/ShareButton";
+import Link from "next/link";
 
 export default async function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { round, roasts } = await getRoundResults(id);
+  const results = await getRoundResults(id);
+
+  if (!results) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <span className="text-6xl">🤷</span>
+        <h2 className="text-xl font-bold">Round not found</h2>
+        <Link href="/" className="btn-secondary">Back to Home</Link>
+      </div>
+    );
+  }
+
+  const { round, roasts } = results;
 
   // Find current user's roast (TODO: match by FID from context)
   const userRoast = roasts[2]; // Placeholder - would be matched by user FID
@@ -60,7 +73,7 @@ export default async function ResultsPage({ params }: { params: Promise<{ id: st
         <ShareButton
           roastText={userRoast.text}
           theme={round.theme}
-          rank={userRoast.rank}
+          rank={userRoast.rank ?? undefined}
           prizeAmount={userRoast.rank && userRoast.rank <= 3 ? 500000 : undefined}
           roundId={id}
         />

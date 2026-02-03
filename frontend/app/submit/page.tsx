@@ -1,25 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import RoastInput from "@/components/RoastInput";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import { useFarcaster } from "@/components/FarcasterProvider";
 import { sendEntryFee } from "@/lib/farcaster";
-import { submitRoast } from "@/lib/api";
+import { submitRoast, getActiveRound, Round } from "@/lib/api";
 import { ENTRY_FEE, ENTRY_FEE_WEI } from "@/lib/constants";
 
-// Prize pool address (TODO: move to env/constants when contract deployed)
+// Prize pool address
 const PRIZE_POOL_ADDRESS = "0x79Bed28E6d195375C19e84350608eA3c4811D4B9";
 
 export default function SubmitPage() {
   const router = useRouter();
-  const { user, clawnBalance, clawnBalanceFormatted, signIn, isLoading, refreshBalance } = useFarcaster();
+  const { user, walletAddress, clawnBalance, clawnBalanceFormatted, signIn, isLoading, refreshBalance } = useFarcaster();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [round, setRound] = useState<Round | null>(null);
 
   const hasEnoughBalance = clawnBalance >= ENTRY_FEE_WEI;
+
+  // Fetch active round
+  useEffect(() => {
+    getActiveRound().then(setRound);
+  }, []);
 
   async function handleSubmit(text: string) {
     setError(null);
@@ -27,6 +33,12 @@ export default function SubmitPage() {
     // Check auth
     if (!user) {
       setError("Please sign in with Farcaster first");
+      return;
+    }
+
+    // Check round
+    if (!round) {
+      setError("No active round. Try again later!");
       return;
     }
 
@@ -46,8 +58,20 @@ export default function SubmitPage() {
         return;
       }
 
-      // 2. Submit roast to backend
-      await submitRoast("round-1", text, user.fid);
+      // 2. Submit roast to backend with user info
+      const result = await submitRoast(round.id, text, user.fid, txHash, {
+        username: user.username,
+        displayName: user.displayName,
+        pfpUrl: user.pfpUrl,
+        walletAddress: walletAddress || undefined,
+      });
+
+      // Check for API error
+      if ("error" in result) {
+        setError(result.error);
+        setSubmitting(false);
+        return;
+      }
 
       // 3. Refresh balance
       await refreshBalance();

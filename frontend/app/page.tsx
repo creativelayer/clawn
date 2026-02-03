@@ -17,11 +17,20 @@ export default async function Home() {
       {/* User status (client component) */}
       <UserStatus />
 
-      <RoundCard round={round} />
-
-      <Link href="/submit" className="btn-primary block text-center text-lg">
-        🎤 Enter the Ring — 50K $CLAWN
-      </Link>
+      {round ? (
+        <>
+          <RoundCard round={round} />
+          <Link href="/submit" className="btn-primary block text-center text-lg">
+            🎤 Enter the Ring — 50K $CLAWN
+          </Link>
+        </>
+      ) : (
+        <div className="card text-center py-8">
+          <span className="text-4xl">🎪</span>
+          <p className="text-white/50 mt-2">No active round right now</p>
+          <p className="text-xs text-white/30 mt-1">Check back soon!</p>
+        </div>
+      )}
 
       <div className="flex justify-center">
         <BuyClawnButton showBalance />
