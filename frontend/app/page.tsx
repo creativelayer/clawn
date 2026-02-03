@@ -1,8 +1,36 @@
 import Link from "next/link";
-import { getActiveRound } from "@/lib/api";
+import { createServerClient } from "@/lib/supabase";
 import RoundCard from "@/components/RoundCard";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import UserStatus from "@/components/UserStatus";
+
+async function getActiveRound() {
+  try {
+    const supabase = createServerClient();
+    const { data: round, error } = await supabase
+      .from("rounds")
+      .select("*, roasts(count)")
+      .eq("status", "active")
+      .order("ends_at", { ascending: true })
+      .limit(1)
+      .single();
+
+    if (error || !round) return null;
+
+    return {
+      id: round.id,
+      theme: round.theme,
+      startsAt: round.starts_at,
+      endsAt: round.ends_at,
+      prizePool: round.prize_pool,
+      status: round.status,
+      entryCount: round.roasts?.[0]?.count || 0,
+    };
+  } catch (e) {
+    console.error("Failed to fetch active round:", e);
+    return null;
+  }
+}
 
 export default async function Home() {
   const round = await getActiveRound();
