@@ -96,8 +96,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to submit roast" }, { status: 500 });
     }
 
-    // Update prize pool (entry fee = 50,000 CLAWN)
-    await supabase.rpc("increment_prize_pool", { round_id: roundId, amount: 50000 });
+    // Update prize pool (70% of entry fee goes to winners)
+    // 50,000 CLAWN entry → 35,000 to pool, 15,000 treasury/burn/streak
+    const PRIZE_POOL_SHARE = 35000; // 70% of 50,000
+    await supabase.rpc("increment_prize_pool", { round_id: roundId, amount: PRIZE_POOL_SHARE });
 
     return NextResponse.json({ id: roast.id, success: true });
   } catch (e) {
