@@ -10,15 +10,23 @@ export const dynamic = "force-dynamic";
 async function getActiveRound() {
   try {
     const supabase = createServerClient();
+    
+    // Get active round
     const { data: round, error } = await supabase
       .from("rounds")
-      .select("*, roasts(count)")
+      .select("*")
       .eq("status", "active")
       .order("ends_at", { ascending: true })
       .limit(1)
       .single();
 
     if (error || !round) return null;
+
+    // Get entry count separately
+    const { count: entryCount } = await supabase
+      .from("roasts")
+      .select("*", { count: "exact", head: true })
+      .eq("round_id", round.id);
 
     return {
       id: round.id,
@@ -27,7 +35,7 @@ async function getActiveRound() {
       endsAt: round.ends_at,
       prizePool: round.prize_pool,
       status: round.status,
-      entryCount: round.roasts?.[0]?.count || 0,
+      entryCount: entryCount || 0,
     };
   } catch (e) {
     console.error("Failed to fetch active round:", e);

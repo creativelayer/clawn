@@ -5,17 +5,16 @@ export async function GET() {
   try {
     const supabase = createServerClient();
 
-    // Get active round with entry count
+    // Get active round
     const { data: round, error } = await supabase
       .from("rounds")
-      .select("*, roasts(count)")
+      .select("*")
       .eq("status", "active")
       .order("ends_at", { ascending: true })
       .limit(1)
       .single();
 
     if (error && error.code !== "PGRST116") {
-      // PGRST116 = no rows returned
       console.error("Error fetching active round:", error);
       return NextResponse.json({ error: "Failed to fetch round" }, { status: 500 });
     }
@@ -23,6 +22,12 @@ export async function GET() {
     if (!round) {
       return NextResponse.json({ error: "No active round" }, { status: 404 });
     }
+
+    // Get entry count separately
+    const { count: entryCount } = await supabase
+      .from("roasts")
+      .select("*", { count: "exact", head: true })
+      .eq("round_id", round.id);
 
     // Format response
     const response = {
@@ -32,7 +37,7 @@ export async function GET() {
       endsAt: round.ends_at,
       prizePool: round.prize_pool,
       status: round.status,
-      entryCount: round.roasts?.[0]?.count || 0,
+      entryCount: entryCount || 0,
     };
 
     return NextResponse.json(response);
