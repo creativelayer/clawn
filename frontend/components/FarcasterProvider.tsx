@@ -70,20 +70,29 @@ export function FarcasterProvider({ children }: { children: ReactNode }) {
           setIsInFrame(true);
         }
 
-        // Try to get wallet
+        // Try to get wallet - request connection if needed
         try {
           const provider = await sdk.wallet.getEthereumProvider();
           if (provider) {
-            const accounts = await provider.request({ method: "eth_accounts" }) as string[];
+            // First try eth_accounts, if empty try eth_requestAccounts
+            let accounts = await provider.request({ method: "eth_accounts" }) as string[];
+            if (!accounts || accounts.length === 0) {
+              // Request wallet connection
+              accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
+            }
             const addr = accounts?.[0] || null;
+            console.log("[Farcaster] Wallet address:", addr);
             setWalletAddress(addr);
             if (addr) {
+              // Get CLAWN balance
               const data = `0x70a08231000000000000000000000000${addr.slice(2).toLowerCase()}` as `0x${string}`;
               const result = await provider.request({
                 method: "eth_call",
                 params: [{ to: CLAWN_ADDRESS, data }, "latest"],
               }) as string;
-              setClawnBalance(BigInt(result || "0"));
+              const balance = BigInt(result || "0");
+              console.log("[Farcaster] CLAWN balance raw:", result, "parsed:", balance.toString());
+              setClawnBalance(balance);
             }
           }
         } catch (e) {

@@ -107,7 +107,7 @@ export async function swapToken(): Promise<boolean> {
 
   try {
     await sdk.actions.swapToken({
-      token: CLAWN_CAIP19,
+      buyToken: CLAWN_CAIP19,  // Pre-fill CLAWN as the token to buy
     });
     return true;
   } catch (e) {
