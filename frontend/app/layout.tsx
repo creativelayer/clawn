@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import { FarcasterProvider } from "@/components/FarcasterProvider";
-import { FarcasterReady } from "@/components/FarcasterReady";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app";
 
@@ -35,9 +35,26 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* Load Farcaster SDK via CDN and call ready() immediately */}
+        <Script 
+          src="https://cdn.jsdelivr.net/npm/@farcaster/miniapp-sdk@0.2.2/dist/index.min.js"
+          strategy="beforeInteractive"
+        />
+        <Script id="fc-ready" strategy="beforeInteractive">
+          {`
+            (function checkAndCallReady() {
+              if (typeof miniapp !== 'undefined' && miniapp.sdk) {
+                miniapp.sdk.actions.ready();
+                console.log('[FC] ready() called via CDN SDK');
+              } else {
+                setTimeout(checkAndCallReady, 10);
+              }
+            })();
+          `}
+        </Script>
+      </head>
       <body className="font-sans antialiased">
-        {/* FarcasterReady MUST be first - calls sdk.actions.ready() */}
-        <FarcasterReady />
         <FarcasterProvider>
           <main className="max-w-lg mx-auto px-4 pt-4 pb-20 min-h-screen">
             {children}
