@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=424">
+<title>Clown Roast Battle - Leaderboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 424px; height: 695px; overflow: hidden;
+    font-family: 'Space Grotesk', sans-serif;
+    background: linear-gradient(180deg, #0d0015 0%, #1a0030 50%, #0d0015 100%);
+    color: #fff; position: relative;
+  }
+  .container { padding: 18px 18px 80px; height: 100%; display: flex; flex-direction: column; }
+
+  .header { text-align: center; margin-bottom: 14px; }
+  .header h1 { font-size: 24px; background: linear-gradient(90deg, #ff2d8a, #ffe135); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header .sub { font-size: 11px; color: #7b5ea7; margin-top: 2px; letter-spacing: 1px; }
+
+  .tabs {
+    display: flex; gap: 8px; margin-bottom: 14px;
+  }
+  .tab {
+    flex: 1; padding: 8px; border-radius: 8px; text-align: center;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    background: rgba(255,255,255,0.04); color: #7b5ea7; border: 1px solid transparent;
+  }
+  .tab.active { background: rgba(255,45,138,0.12); color: #ff2d8a; border-color: rgba(255,45,138,0.3); }
+
+  .list { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+
+  .row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
+  }
+  .row.me {
+    background: rgba(255,45,138,0.08); border-color: rgba(255,45,138,0.25);
+    box-shadow: 0 0 16px rgba(255,45,138,0.08);
+  }
+  .row .rank { width: 28px; text-align: center; font-size: 18px; flex-shrink: 0; }
+  .row .rank-num { width: 28px; text-align: center; font-size: 14px; font-weight: 700; color: #7b5ea7; flex-shrink: 0; }
+  .row .info { flex: 1; min-width: 0; }
+  .row .name { font-size: 14px; font-weight: 600; color: #f0e0ff; }
+  .row .title { font-size: 10px; color: #ff8adb; margin-top: 1px; }
+  .row .stats-col { text-align: right; flex-shrink: 0; }
+  .row .wins { font-size: 12px; color: #ffe135; font-weight: 600; }
+  .row .earned { font-size: 11px; color: #7b5ea7; }
+  .row.me .name { color: #ff2d8a; }
+  .you-badge { font-size: 9px; background: #ff2d8a; color: #fff; padding: 1px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+
+  .bottom-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 12px 18px 18px; background: linear-gradient(transparent, #0d0015 30%);
+  }
+  .buy-btn {
+    display: block; width: 100%; padding: 14px; border: none; border-radius: 14px;
+    font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, #ffe135, #ffaa00);
+    color: #1a0030; text-align: center;
+    box-shadow: 0 6px 24px rgba(255,225,53,0.3);
+  }
+
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(13,0,21,0.95); border-top: 1px solid rgba(255,45,138,0.15);
+    display: flex; justify-content: space-around; padding: 10px 0 14px;
+  }
+  .nav-item { text-align: center; font-size: 10px; color: #7b5ea7; cursor: pointer; }
+  .nav-item.active { color: #ff2d8a; }
+  .nav-item .icon { font-size: 20px; display: block; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🤡 Hall of Clowns</h1>
+      <div class="sub">Top roasters of all time</div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active">All Time</div>
+      <div class="tab">This Week</div>
+      <div class="tab">This Round</div>
+    </div>
+
+    <div class="list">
+      <div class="row">
+        <div class="rank">👑</div>
+        <div class="info">
+          <div class="name">CryptoClown.eth</div>
+          <div class="title">Supreme Honker 🎪</div>
+        </div>
+        <div class="stats-col">
+          <div class="wins">42 wins</div>
+          <div class="earned">285,000 $CLAWN</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="rank">🥈</div>
+        <div class="info">
+          <div class="name">HonkMaster420</div>
+          <div class="title">Pie Face Champion 🥧</div>
+        </div>
+        <div class="stats-col">
+          <div class="wins">38 wins</div>
+          <div class="earned">210,500 $CLAWN</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="rank">🥉</div>
+        <div class="info">
+          <div class="name">PieFaceDAO</div>
+          <div class="title">Rubber Chicken Wizard 🐔</div>
+        </div>
+        <div class="stats-col">
+          <div class="wins">31 wins</div>
+          <div class="earned">178,200 $CLAWN</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="rank-num">#4</div>
+        <div class="info">
+          <div class="name">BasedJester</div>
+          <div class="title">Balloon Animal Savant 🎈</div>
+        </div>
+        <div class="stats-col">
+          <div class="wins">27 wins</div>
+          <div class="earned">142,800 $CLAWN</div>
+        </div>
+      </div>
+      <div class="row me">
+        <div class="rank-num">#5</div>
+        <div class="info">
+          <div class="name">You <span class="you-badge">YOU</span></div>
+          <div class="title">Rising Clown 🌟</div>
+        </div>
+        <div class="stats-col">
+          <div class="wins">12 wins</div>
+          <div class="earned">68,400 $CLAWN</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="rank-num">#6</div>
+        <div class="info">
+          <div class="name">FarcasterFool</div>
+          <div class="title">Seltzer Bottle Sniper 💦</div>
+        </div>
+        <div class="stats-col">
+          <div class="wins">11 wins</div>
+          <div class="earned">55,100 $CLAWN</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="rank-num">#7</div>
+        <div class="info">
+          <div class="name">BigShoesEnergy</div>
+          <div class="title">Whoopee Cushion King 💨</div>
+        </div>
+        <div class="stats-col">
+          <div class="wins">9 wins</div>
+          <div class="earned">41,200 $CLAWN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item"><span class="icon">🏠</span>Home</div>
+    <div class="nav-item active"><span class="icon">🏆</span>Leaderboard</div>
+    <div class="nav-item"><span class="icon">💰</span>Buy $CLAWN</div>
+    <div class="nav-item"><span class="icon">🤡</span>Profile</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=424">
+<title>Clown Roast Battle - Results</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 424px; height: 695px; overflow: hidden;
+    font-family: 'Space Grotesk', sans-serif;
+    background: linear-gradient(180deg, #0d0015 0%, #1a0030 50%, #0d0015 100%);
+    color: #fff;
+  }
+  .container { padding: 20px 18px; height: 100%; display: flex; flex-direction: column; }
+
+  .header { text-align: center; margin-bottom: 16px; }
+  .header h1 { font-size: 24px; color: #ffe135; }
+  .header .sub { font-size: 12px; color: #b388ff; margin-top: 4px; }
+
+  .winner-card {
+    background: linear-gradient(145deg, rgba(255,225,53,0.12), rgba(255,180,0,0.06));
+    border: 2px solid rgba(255,225,53,0.4);
+    border-radius: 18px; padding: 18px; margin-bottom: 14px;
+    box-shadow: 0 0 30px rgba(255,225,53,0.1);
+    position: relative;
+  }
+  .winner-badge {
+    position: absolute; top: -10px; right: 16px;
+    background: linear-gradient(135deg, #ffe135, #ffaa00);
+    color: #1a0030; font-size: 11px; font-weight: 700;
+    padding: 4px 12px; border-radius: 20px;
+  }
+  .winner-card .name { font-size: 16px; font-weight: 700; color: #ffe135; margin-bottom: 8px; }
+  .winner-card .roast { font-size: 15px; color: #f0e0ff; line-height: 1.5; font-style: italic; margin-bottom: 10px; }
+  .winner-card .prize { font-size: 20px; font-weight: 700; color: #ffe135; }
+  .winner-card .prize-label { font-size: 11px; color: #b388ff; }
+
+  .runner-up {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.03); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px;
+    border: 1px solid rgba(255,45,138,0.12);
+  }
+  .runner-up .rank {
+    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .rank-2 { background: rgba(192,192,192,0.15); border: 1px solid rgba(192,192,192,0.3); }
+  .rank-3 { background: rgba(205,127,50,0.15); border: 1px solid rgba(205,127,50,0.3); }
+  .runner-up .info { flex: 1; min-width: 0; }
+  .runner-up .name { font-size: 13px; font-weight: 600; color: #ff8adb; }
+  .runner-up .text { font-size: 12px; color: #9a80b8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .runner-up .amt { font-size: 14px; font-weight: 700; color: #ffe135; flex-shrink: 0; }
+
+  .next-round {
+    text-align: center; padding: 14px; margin: 14px 0;
+    background: rgba(255,45,138,0.08); border-radius: 12px;
+  }
+  .next-round .label { font-size: 11px; color: #7b5ea7; text-transform: uppercase; letter-spacing: 1px; }
+  .next-round .time { font-size: 22px; font-weight: 700; color: #ff2d8a; margin-top: 4px; }
+
+  .actions { display: flex; gap: 10px; margin-top: auto; }
+  .btn-share {
+    flex: 1; padding: 14px; border: none; border-radius: 12px;
+    font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: #fff; text-align: center;
+  }
+  .btn-next {
+    flex: 1; padding: 14px; border: 2px solid rgba(255,45,138,0.4); border-radius: 12px;
+    font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    background: transparent; color: #ff2d8a; text-align: center;
+  }
+
+  .stats {
+    display: flex; justify-content: center; gap: 24px; margin: 12px 0;
+    font-size: 12px; color: #7b5ea7;
+  }
+  .stats strong { color: #ff8adb; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Round #42 Results 🏆</h1>
+      <div class="sub">The votes are in. The roasts are ranked.</div>
+    </div>
+
+    <div class="stats">
+      <span>🎤 <strong>347</strong> roasts</span>
+      <span>🗳️ <strong>12,841</strong> votes</span>
+      <span>🤡 <strong>892</strong> clowns</span>
+    </div>
+
+    <div class="winner-card">
+      <div class="winner-badge">👑 WINNER</div>
+      <div class="name">🤡 CryptoClown.eth</div>
+      <div class="roast">"Fortune cookies have better financial advice than my portfolio manager — and at least I get a cookie"</div>
+      <div class="prize-label">Prize Won</div>
+      <div class="prize">🏆 25,000 $CLAWN</div>
+    </div>
+
+    <div class="runner-up">
+      <div class="rank rank-2">🥈</div>
+      <div class="info">
+        <div class="name">HonkMaster420</div>
+        <div class="text">"My memecoin losses ARE my success — consistency is key"</div>
+      </div>
+      <div class="amt">10,000</div>
+    </div>
+
+    <div class="runner-up">
+      <div class="rank rank-3">🥉</div>
+      <div class="info">
+        <div class="name">PieFaceDAO</div>
+        <div class="text">"This fortune is just my Phantom wallet history"</div>
+      </div>
+      <div class="amt">5,000</div>
+    </div>
+
+    <div class="next-round">
+      <div class="label">Next round starts in</div>
+      <div class="time">2h 15m</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-share">📤 Share Results</button>
+      <button class="btn-next">🔔 Remind Me</button>
+    </div>
+  </div>
+</body>
+</html>
