@@ -1,17 +1,17 @@
 {
   "accountAssociation": {
-    "header": "PLACEHOLDER — Paul needs to generate this with his custody address",
-    "payload": "PLACEHOLDER",
-    "signature": "PLACEHOLDER"
+    "header": "eyJmaWQiOjEyMzQ1LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4Li4uIn0",
+    "payload": "eyJkb21haW4iOiJjbGF3bi1vMGg0MzJkOWgtY3JlYXRpdmUtbGF5ZXItcHJvamVjdHMtYjdiNmI1ZjkudmVyY2VsLmFwcCJ9",
+    "signature": "PLACEHOLDER_NEEDS_PAUL_SIGNATURE"
   },
   "frame": {
     "version": "1",
     "name": "Clown Roast Battle",
-    "iconUrl": "https://placeholder.com/clown-icon.png",
-    "homeUrl": "https://clownroastbattle.xyz",
-    "imageUrl": "https://placeholder.com/clown-og.png",
-    "splashImageUrl": "https://placeholder.com/clown-splash.png",
+    "iconUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/icon.png",
+    "homeUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app",
+    "imageUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/og-image.png",
+    "splashImageUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/splash.png",
     "splashBackgroundColor": "#0d0015",
-    "webhookUrl": "https://clownroastbattle.xyz/api/webhook"
+    "webhookUrl": "https://clawn-o0h432d9h-creative-layer-projects-b7b6b5f9.vercel.app/api/webhook"
   }
 }

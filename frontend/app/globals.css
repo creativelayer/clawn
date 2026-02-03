@@ -29,6 +29,7 @@ body {
   text-shadow: 0 0 10px var(--clown-purple), 0 0 40px var(--clown-purple);
 }
 
+/* Button styles */
 .btn-primary {
   @apply bg-clown-pink text-white font-bold py-3 px-6 rounded-xl transition-all;
   box-shadow: 0 0 20px rgba(255, 45, 120, 0.4);
@@ -39,6 +40,42 @@ body {
   @apply scale-105;
 }
 
+.btn-primary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  @apply bg-white/10 text-white font-bold py-3 px-6 rounded-xl transition-all border border-white/20;
+}
+
+.btn-secondary:hover {
+  @apply bg-white/20;
+}
+
+.btn-secondary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+/* Card styles */
 .card {
   @apply bg-clown-bg-light border border-clown-purple/30 rounded-2xl p-4;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--clown-bg-light);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--clown-purple);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--clown-pink);
 }
