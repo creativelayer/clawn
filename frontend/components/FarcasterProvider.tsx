@@ -2,7 +2,31 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
-import { CLAWN_ADDRESS } from "@/lib/constants";
+import { CLAWN_ADDRESS, CHAIN_ID } from "@/lib/constants";
+
+// Public RPC for reading chain data (Farcaster provider doesn't support eth_call)
+const BASE_RPC = "https://mainnet.base.org";
+
+async function fetchClawnBalance(address: string): Promise<bigint> {
+  try {
+    const data = `0x70a08231000000000000000000000000${address.slice(2).toLowerCase()}`;
+    const response = await fetch(BASE_RPC, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "eth_call",
+        params: [{ to: CLAWN_ADDRESS, data }, "latest"],
+      }),
+    });
+    const result = await response.json();
+    return BigInt(result.result || "0");
+  } catch (e) {
+    console.error("Failed to fetch CLAWN balance:", e);
+    return 0n;
+  }
+}
 
 export interface FarcasterUser {
   fid: number;
@@ -70,28 +94,23 @@ export function FarcasterProvider({ children }: { children: ReactNode }) {
           setIsInFrame(true);
         }
 
-        // Try to get wallet - request connection if needed
+        // Try to get wallet address
         try {
           const provider = await sdk.wallet.getEthereumProvider();
           if (provider) {
             // First try eth_accounts, if empty try eth_requestAccounts
             let accounts = await provider.request({ method: "eth_accounts" }) as string[];
             if (!accounts || accounts.length === 0) {
-              // Request wallet connection
               accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
             }
             const addr = accounts?.[0] || null;
             console.log("[Farcaster] Wallet address:", addr);
             setWalletAddress(addr);
+            
+            // Fetch CLAWN balance via public RPC (Farcaster provider doesn't support eth_call)
             if (addr) {
-              // Get CLAWN balance
-              const data = `0x70a08231000000000000000000000000${addr.slice(2).toLowerCase()}` as `0x${string}`;
-              const result = await provider.request({
-                method: "eth_call",
-                params: [{ to: CLAWN_ADDRESS, data }, "latest"],
-              }) as string;
-              const balance = BigInt(result || "0");
-              console.log("[Farcaster] CLAWN balance raw:", result, "parsed:", balance.toString());
+              const balance = await fetchClawnBalance(addr);
+              console.log("[Farcaster] CLAWN balance:", balance.toString());
               setClawnBalance(balance);
             }
           }
@@ -131,15 +150,9 @@ export function FarcasterProvider({ children }: { children: ReactNode }) {
   const refreshBalance = useCallback(async () => {
     if (!walletAddress) return;
     try {
-      const provider = await sdk.wallet.getEthereumProvider();
-      if (provider) {
-        const data = `0x70a08231000000000000000000000000${walletAddress.slice(2).toLowerCase()}` as `0x${string}`;
-        const result = await provider.request({
-          method: "eth_call",
-          params: [{ to: CLAWN_ADDRESS, data }, "latest"],
-        }) as string;
-        setClawnBalance(BigInt(result || "0"));
-      }
+      const balance = await fetchClawnBalance(walletAddress);
+      console.log("[Farcaster] Balance refreshed:", balance.toString());
+      setClawnBalance(balance);
     } catch (e) {
       console.error("Balance refresh failed:", e);
     }
