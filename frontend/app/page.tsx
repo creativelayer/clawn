@@ -4,6 +4,9 @@ import RoundCard from "@/components/RoundCard";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import UserStatus from "@/components/UserStatus";
 
+// Force dynamic rendering (no static generation)
+export const dynamic = "force-dynamic";
+
 async function getActiveRound() {
   try {
     const supabase = createServerClient();

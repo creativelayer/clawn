@@ -1,6 +1,9 @@
 import { getLeaderboard } from "@/lib/api";
 import LeaderboardRow from "@/components/LeaderboardRow";
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic";
+
 export default async function LeaderboardPage() {
   const entries = await getLeaderboard();
 
