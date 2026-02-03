@@ -34,12 +34,25 @@ export interface LeaderboardEntry {
   title: string;
 }
 
-// API base - empty for same-origin requests
-const API_BASE = "";
+// Get API base URL - needs absolute URL for server-side rendering
+function getApiBase(): string {
+  // Client-side: use relative URLs
+  if (typeof window !== "undefined") {
+    return "";
+  }
+  // Server-side: use VERCEL_URL (auto-set by Vercel) or configured URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
+  }
+  return "http://localhost:3000";
+}
 
 export async function getActiveRound(): Promise<Round | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/rounds/active`, {
+    const res = await fetch(`${getApiBase()}/api/rounds/active`, {
       next: { revalidate: 30 },
     });
     if (!res.ok) {
@@ -57,7 +70,7 @@ export async function getRoundResults(
   id: string
 ): Promise<{ round: Round; roasts: Roast[] } | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/rounds/${id}/results`, {
+    const res = await fetch(`${getApiBase()}/api/rounds/${id}/results`, {
       next: { revalidate: 30 },
     });
     if (!res.ok) throw new Error(`${res.status}`);
@@ -81,7 +94,7 @@ export async function submitRoast(
   }
 ): Promise<{ id: string } | { error: string }> {
   try {
-    const res = await fetch(`${API_BASE}/api/roasts`, {
+    const res = await fetch(`${getApiBase()}/api/roasts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -108,7 +121,7 @@ export async function submitRoast(
 
 export async function getRoasts(roundId: string): Promise<Roast[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/roasts?roundId=${roundId}`, {
+    const res = await fetch(`${getApiBase()}/api/roasts?roundId=${roundId}`, {
       next: { revalidate: 30 },
     });
     if (!res.ok) throw new Error(`${res.status}`);
@@ -121,7 +134,7 @@ export async function getRoasts(roundId: string): Promise<Roast[]> {
 
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/leaderboard`, {
+    const res = await fetch(`${getApiBase()}/api/leaderboard`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) throw new Error(`${res.status}`);
