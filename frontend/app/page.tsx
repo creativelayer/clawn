@@ -1,47 +1,12 @@
 import Link from "next/link";
-import { createServerClient } from "@/lib/supabase";
 import RoundCard from "@/components/RoundCard";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import UserStatus from "@/components/UserStatus";
+import { getActiveRound } from "@/lib/api";
 
 // Force dynamic rendering (no static generation)
 export const dynamic = "force-dynamic";
-
-async function getActiveRound() {
-  try {
-    const supabase = createServerClient();
-    
-    // Get active round
-    const { data: round, error } = await supabase
-      .from("rounds")
-      .select("*")
-      .eq("status", "active")
-      .order("ends_at", { ascending: true })
-      .limit(1)
-      .single();
-
-    if (error || !round) return null;
-
-    // Get entry count separately
-    const { count: entryCount } = await supabase
-      .from("roasts")
-      .select("*", { count: "exact", head: true })
-      .eq("round_id", round.id);
-
-    return {
-      id: round.id,
-      theme: round.theme,
-      startsAt: round.starts_at,
-      endsAt: round.ends_at,
-      prizePool: round.prize_pool,
-      status: round.status,
-      entryCount: entryCount || 0,
-    };
-  } catch (e) {
-    console.error("Failed to fetch active round:", e);
-    return null;
-  }
-}
+export const revalidate = 0;
 
 export default async function Home() {
   const round = await getActiveRound();
