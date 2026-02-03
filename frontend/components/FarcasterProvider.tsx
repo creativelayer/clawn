@@ -5,7 +5,7 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import { CLAWN_ADDRESS, CHAIN_ID } from "@/lib/constants";
 
 // Public RPC for reading chain data (Farcaster provider doesn't support eth_call)
-const BASE_RPC = "https://mainnet.base.org";
+const BASE_RPC = "https://base-mainnet.g.alchemy.com/v2/UIq6IAtiFSotBU8rupy2z";
 
 async function fetchClawnBalance(address: string): Promise<bigint> {
   try {
