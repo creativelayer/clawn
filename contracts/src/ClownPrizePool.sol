@@ -52,11 +52,15 @@ contract ClownPrizePool is
     struct Round {
         uint256 funded;        // Total CLAWN funded for this round
         uint256 distributed;   // Total CLAWN distributed to winners
+        uint256 refunded;      // Total CLAWN refunded (for cancelled rounds)
         bool isComplete;       // Whether distribution is complete
     }
     
     /// @notice Mapping of roundId => Round data
     mapping(bytes32 => Round) public rounds;
+    
+    /// @notice Total CLAWN allocated to incomplete rounds
+    uint256 public totalAllocated;
     
     /// @notice Total burned across all rounds
     uint256 public totalBurned;
@@ -92,6 +96,8 @@ contract ClownPrizePool is
     error ArrayLengthMismatch();
     error ExceedsPrizePool(uint256 requested, uint256 available);
     error NoFundsToRefund(bytes32 roundId);
+    error RefundExceedsFunded(bytes32 roundId, uint256 totalRefunded, uint256 funded);
+    error InsufficientUnallocatedBalance(uint256 requested, uint256 available);
 
     // ============ Initializer ============
     
@@ -139,6 +145,7 @@ contract ClownPrizePool is
         clawnToken.safeTransferFrom(msg.sender, address(this), amount);
         
         rounds[roundId].funded += amount;
+        totalAllocated += amount;
         
         emit RoundFunded(roundId, amount);
     }
@@ -180,6 +187,9 @@ contract ClownPrizePool is
         // Mark as complete before transfers (CEI pattern)
         round.isComplete = true;
         round.distributed = totalPrizes;
+        
+        // Release allocation (entire funded amount is now accounted for)
+        totalAllocated -= totalFunded;
         
         // Update totals
         totalBurned += burnAmount;
@@ -232,17 +242,52 @@ contract ClownPrizePool is
         if (rounds[roundId].funded == 0) revert NoFundsToRefund(roundId);
         
         Round storage round = rounds[roundId];
-        round.isComplete = true;
         
-        uint256 totalRefunded;
+        // Calculate total refund for this call
+        uint256 refundingNow;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            refundingNow += amounts[i];
+        }
+        
+        // Check cumulative refunds don't exceed funded amount
+        uint256 newTotalRefunded = round.refunded + refundingNow;
+        if (newTotalRefunded > round.funded) {
+            revert RefundExceedsFunded(roundId, newTotalRefunded, round.funded);
+        }
+        
+        // Update refund tracking
+        round.refunded = newTotalRefunded;
+        
+        // If fully refunded, mark complete and release allocation
+        if (newTotalRefunded == round.funded) {
+            round.isComplete = true;
+            totalAllocated -= round.funded;
+        }
+        
+        // Transfer refunds
         for (uint256 i = 0; i < participants.length; i++) {
             if (amounts[i] > 0 && participants[i] != address(0)) {
                 clawnToken.safeTransfer(participants[i], amounts[i]);
-                totalRefunded += amounts[i];
             }
         }
         
-        emit RoundRefunded(roundId, totalRefunded);
+        emit RoundRefunded(roundId, refundingNow);
+    }
+    
+    /**
+     * @notice Mark a partially refunded round as complete
+     * @dev Use when not all participants claimed refunds and you want to close the round
+     * @param roundId Round to close
+     */
+    function closeRefundedRound(bytes32 roundId) external onlyOwner {
+        Round storage round = rounds[roundId];
+        if (round.isComplete) revert RoundAlreadyComplete(roundId);
+        if (round.funded == 0) revert RoundNotFunded(roundId);
+        if (round.refunded == 0) revert NoFundsToRefund(roundId); // Must have started refunding
+        
+        round.isComplete = true;
+        totalAllocated -= round.funded;
+        // Remaining funds (funded - refunded) become unallocated and can be rescued
     }
     
     /**
@@ -267,11 +312,20 @@ contract ClownPrizePool is
     
     /**
      * @notice Rescue tokens accidentally sent to contract
-     * @dev Safety valve for stuck tokens
+     * @dev For CLAWN: only allows withdrawing unallocated balance (protects active rounds)
+     * @dev For other tokens: allows full rescue
      * @param token Token address to rescue
      * @param amount Amount to rescue
      */
     function rescue(address token, uint256 amount) external onlyOwner {
+        if (token == address(clawnToken)) {
+            // For CLAWN, only allow rescuing unallocated balance
+            uint256 balance = clawnToken.balanceOf(address(this));
+            uint256 available = balance > totalAllocated ? balance - totalAllocated : 0;
+            if (amount > available) {
+                revert InsufficientUnallocatedBalance(amount, available);
+            }
+        }
         IERC20(token).safeTransfer(owner(), amount);
         emit TokensRescued(token, amount);
     }
@@ -283,15 +337,17 @@ contract ClownPrizePool is
      * @param roundId Round to query
      * @return funded Total funded
      * @return distributed Total distributed to winners
+     * @return refunded Total refunded
      * @return isComplete Whether round is complete
      */
     function getRound(bytes32 roundId) external view returns (
         uint256 funded,
         uint256 distributed,
+        uint256 refunded,
         bool isComplete
     ) {
         Round storage round = rounds[roundId];
-        return (round.funded, round.distributed, round.isComplete);
+        return (round.funded, round.distributed, round.refunded, round.isComplete);
     }
     
     /**
@@ -316,22 +372,34 @@ contract ClownPrizePool is
     }
     
     /**
+     * @notice Get unallocated CLAWN balance (safe to rescue)
+     * @return unallocated Amount of CLAWN not earmarked for active rounds
+     */
+    function getUnallocatedBalance() external view returns (uint256 unallocated) {
+        uint256 balance = clawnToken.balanceOf(address(this));
+        return balance > totalAllocated ? balance - totalAllocated : 0;
+    }
+    
+    /**
      * @notice Get contract statistics
      * @return _totalBurned Total CLAWN burned
      * @return _totalToTreasury Total sent to treasury
      * @return _totalToStreakPool Total sent to streak pool
+     * @return _totalAllocated Total allocated to active rounds
      * @return balance Current CLAWN balance
      */
     function getStats() external view returns (
         uint256 _totalBurned,
         uint256 _totalToTreasury,
         uint256 _totalToStreakPool,
+        uint256 _totalAllocated,
         uint256 balance
     ) {
         return (
             totalBurned,
             totalToTreasury,
             totalToStreakPool,
+            totalAllocated,
             clawnToken.balanceOf(address(this))
         );
     }
@@ -347,6 +415,6 @@ contract ClownPrizePool is
      * @notice Get implementation version
      */
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.1.0";
     }
 }

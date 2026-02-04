@@ -71,7 +71,7 @@ contract ClownPrizePoolTest is Test {
         assertEq(pool.treasury(), treasury);
         assertEq(pool.streakPool(), streakPool);
         assertEq(pool.owner(), owner);
-        assertEq(pool.version(), "1.0.0");
+        assertEq(pool.version(), "1.1.0");
     }
     
     function test_CannotInitializeTwice() public {
@@ -118,11 +118,13 @@ contract ClownPrizePoolTest is Test {
         
         pool.fundRound(roundId, amount);
         
-        (uint256 funded, uint256 distributed, bool isComplete) = pool.getRound(roundId);
+        (uint256 funded, uint256 distributed, uint256 refunded, bool isComplete) = pool.getRound(roundId);
         assertEq(funded, amount);
         assertEq(distributed, 0);
+        assertEq(refunded, 0);
         assertFalse(isComplete);
         assertEq(clawn.balanceOf(address(pool)), amount);
+        assertEq(pool.totalAllocated(), amount);
     }
     
     function test_FundRoundMultipleTimes() public {
@@ -133,8 +135,9 @@ contract ClownPrizePoolTest is Test {
         pool.fundRound(roundId, ENTRY_FEE);
         pool.fundRound(roundId, ENTRY_FEE);
         
-        (uint256 funded,,) = pool.getRound(roundId);
+        (uint256 funded,,,) = pool.getRound(roundId);
         assertEq(funded, 2 * ENTRY_FEE);
+        assertEq(pool.totalAllocated(), 2 * ENTRY_FEE);
     }
     
     function test_CannotFundCompletedRound() public {
@@ -194,13 +197,16 @@ contract ClownPrizePoolTest is Test {
         assertEq(clawn.balanceOf(streakPool), streakAmt);
         
         // Verify round state
-        (uint256 funded, uint256 distributed, bool isComplete) = pool.getRound(roundId);
+        (uint256 funded, uint256 distributed,, bool isComplete) = pool.getRound(roundId);
         assertEq(funded, totalPool);
         assertEq(distributed, maxPrizes);
         assertTrue(isComplete);
         
+        // Verify allocation released
+        assertEq(pool.totalAllocated(), 0);
+        
         // Verify stats
-        (uint256 totalBurned, uint256 totalToTreasury, uint256 totalToStreakPool,) = pool.getStats();
+        (uint256 totalBurned, uint256 totalToTreasury, uint256 totalToStreakPool,,) = pool.getStats();
         assertEq(totalBurned, burnAmt);
         assertEq(totalToTreasury, treasuryAmt);
         assertEq(totalToStreakPool, streakAmt);
@@ -257,9 +263,10 @@ contract ClownPrizePoolTest is Test {
         // Winner gets partial, leftover stays in contract
         assertEq(clawn.balanceOf(winner1), partialPrize);
         
-        // Leftover can be rescued
+        // Leftover can be rescued (now unallocated)
         uint256 leftover = maxPrizes - partialPrize;
         assertEq(clawn.balanceOf(address(pool)), leftover);
+        assertEq(pool.getUnallocatedBalance(), leftover);
     }
     
     function test_CannotDistributeMoreThanPool() public {
@@ -362,8 +369,123 @@ contract ClownPrizePoolTest is Test {
         assertEq(clawn.balanceOf(user1), ENTRY_FEE);
         assertEq(clawn.balanceOf(user2), ENTRY_FEE);
         
-        (,, bool isComplete) = pool.getRound(roundId);
+        (,, uint256 refunded, bool isComplete) = pool.getRound(roundId);
+        assertEq(refunded, 2 * ENTRY_FEE);
         assertTrue(isComplete);
+        assertEq(pool.totalAllocated(), 0);
+    }
+    
+    function test_RefundRoundPartial() public {
+        bytes32 roundId = keccak256("round1");
+        
+        clawn.approve(address(pool), 3 * ENTRY_FEE);
+        pool.fundRound(roundId, 3 * ENTRY_FEE);
+        
+        // First refund batch
+        address[] memory participants1 = new address[](1);
+        participants1[0] = user1;
+        uint256[] memory amounts1 = new uint256[](1);
+        amounts1[0] = ENTRY_FEE;
+        
+        pool.refundRound(roundId, participants1, amounts1);
+        
+        // Round not complete yet (partial refund)
+        (,, uint256 refunded, bool isComplete) = pool.getRound(roundId);
+        assertEq(refunded, ENTRY_FEE);
+        assertFalse(isComplete);
+        assertEq(pool.totalAllocated(), 3 * ENTRY_FEE); // Still allocated
+        
+        // Second refund batch
+        address[] memory participants2 = new address[](1);
+        participants2[0] = user2;
+        uint256[] memory amounts2 = new uint256[](1);
+        amounts2[0] = 2 * ENTRY_FEE;
+        
+        pool.refundRound(roundId, participants2, amounts2);
+        
+        // Now complete
+        (,, refunded, isComplete) = pool.getRound(roundId);
+        assertEq(refunded, 3 * ENTRY_FEE);
+        assertTrue(isComplete);
+        assertEq(pool.totalAllocated(), 0);
+    }
+    
+    function test_CannotRefundMoreThanFunded() public {
+        bytes32 roundId = keccak256("round1");
+        
+        clawn.approve(address(pool), 2 * ENTRY_FEE);
+        pool.fundRound(roundId, 2 * ENTRY_FEE);
+        
+        address[] memory participants = new address[](1);
+        participants[0] = user1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 3 * ENTRY_FEE; // More than funded
+        
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClownPrizePool.RefundExceedsFunded.selector, 
+                roundId, 
+                3 * ENTRY_FEE, 
+                2 * ENTRY_FEE
+            )
+        );
+        pool.refundRound(roundId, participants, amounts);
+    }
+    
+    function test_CannotRefundMoreThanFundedCumulative() public {
+        bytes32 roundId = keccak256("round1");
+        
+        clawn.approve(address(pool), 2 * ENTRY_FEE);
+        pool.fundRound(roundId, 2 * ENTRY_FEE);
+        
+        // First refund
+        address[] memory participants1 = new address[](1);
+        participants1[0] = user1;
+        uint256[] memory amounts1 = new uint256[](1);
+        amounts1[0] = ENTRY_FEE;
+        pool.refundRound(roundId, participants1, amounts1);
+        
+        // Second refund exceeds remaining
+        address[] memory participants2 = new address[](1);
+        participants2[0] = user2;
+        uint256[] memory amounts2 = new uint256[](1);
+        amounts2[0] = ENTRY_FEE + 1; // 1 too much
+        
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClownPrizePool.RefundExceedsFunded.selector, 
+                roundId, 
+                2 * ENTRY_FEE + 1, 
+                2 * ENTRY_FEE
+            )
+        );
+        pool.refundRound(roundId, participants2, amounts2);
+    }
+    
+    function test_CloseRefundedRound() public {
+        bytes32 roundId = keccak256("round1");
+        
+        clawn.approve(address(pool), 3 * ENTRY_FEE);
+        pool.fundRound(roundId, 3 * ENTRY_FEE);
+        
+        // Partial refund
+        address[] memory participants = new address[](1);
+        participants[0] = user1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 2 * ENTRY_FEE;
+        pool.refundRound(roundId, participants, amounts);
+        
+        // Close the round with remaining funds unrefunded
+        pool.closeRefundedRound(roundId);
+        
+        (uint256 funded,, uint256 refunded, bool isComplete) = pool.getRound(roundId);
+        assertTrue(isComplete);
+        assertEq(funded, 3 * ENTRY_FEE);
+        assertEq(refunded, 2 * ENTRY_FEE);
+        
+        // Remaining 1 ENTRY_FEE is now unallocated
+        assertEq(pool.totalAllocated(), 0);
+        assertEq(pool.getUnallocatedBalance(), ENTRY_FEE);
     }
     
     function test_CannotRefundCompletedRound() public {
@@ -396,6 +518,101 @@ contract ClownPrizePoolTest is Test {
         pool.refundRound(roundId, participants, amounts);
     }
     
+    // ============ Rescue Tests ============
+    
+    function test_RescueUnallocatedClawn() public {
+        // Send some tokens directly to contract (not via fundRound)
+        clawn.transfer(address(pool), 1000 * 1e18);
+        
+        uint256 ownerBefore = clawn.balanceOf(owner);
+        
+        vm.expectEmit(true, false, false, true);
+        emit TokensRescued(address(clawn), 1000 * 1e18);
+        
+        pool.rescue(address(clawn), 1000 * 1e18);
+        
+        assertEq(clawn.balanceOf(owner), ownerBefore + 1000 * 1e18);
+    }
+    
+    function test_CannotRescueAllocatedClawn() public {
+        bytes32 roundId = keccak256("round1");
+        uint256 amount = 10 * ENTRY_FEE;
+        
+        // Fund a round
+        clawn.approve(address(pool), amount);
+        pool.fundRound(roundId, amount);
+        
+        // Try to rescue allocated funds
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ClownPrizePool.InsufficientUnallocatedBalance.selector,
+                amount,
+                0
+            )
+        );
+        pool.rescue(address(clawn), amount);
+    }
+    
+    function test_RescuePartialUnallocated() public {
+        bytes32 roundId = keccak256("round1");
+        uint256 allocated = 10 * ENTRY_FEE;
+        uint256 extra = 1000 * 1e18;
+        
+        // Fund a round
+        clawn.approve(address(pool), allocated);
+        pool.fundRound(roundId, allocated);
+        
+        // Send extra tokens directly
+        clawn.transfer(address(pool), extra);
+        
+        // Can rescue the extra
+        pool.rescue(address(clawn), extra);
+        
+        // Cannot rescue allocated
+        vm.expectRevert();
+        pool.rescue(address(clawn), 1);
+    }
+    
+    function test_RescueAfterDistribute() public {
+        bytes32 roundId = keccak256("round1");
+        uint256 totalPool = 100_000 * 1e18;
+        
+        clawn.approve(address(pool), totalPool);
+        pool.fundRound(roundId, totalPool);
+        
+        // Distribute with partial prizes
+        uint256 maxPrizes = (totalPool * 7000) / 10000;
+        uint256 partialPrize = maxPrizes / 2;
+        
+        address[] memory winners = new address[](1);
+        winners[0] = winner1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = partialPrize;
+        
+        pool.distribute(roundId, winners, amounts);
+        
+        // Leftover prizes are now unallocated
+        uint256 leftover = maxPrizes - partialPrize;
+        assertEq(pool.getUnallocatedBalance(), leftover);
+        
+        // Can rescue leftover
+        pool.rescue(address(clawn), leftover);
+    }
+    
+    function test_RescueOtherToken() public {
+        // Create and send another token
+        MockCLAWN otherToken = new MockCLAWN();
+        otherToken.transfer(address(pool), 1000 * 1e18);
+        
+        // Fund a round with CLAWN
+        clawn.approve(address(pool), ENTRY_FEE);
+        pool.fundRound(keccak256("round1"), ENTRY_FEE);
+        
+        // Can rescue other token regardless of CLAWN allocation
+        pool.rescue(address(otherToken), 1000 * 1e18);
+        assertEq(otherToken.balanceOf(owner), otherToken.totalSupply());
+    }
+    
     // ============ Admin Tests ============
     
     function test_SetTreasury() public {
@@ -421,20 +638,6 @@ contract ClownPrizePoolTest is Test {
         
         pool.setStreakPool(newPool);
         assertEq(pool.streakPool(), newPool);
-    }
-    
-    function test_Rescue() public {
-        // Send some tokens directly to contract
-        clawn.transfer(address(pool), 1000 * 1e18);
-        
-        uint256 ownerBefore = clawn.balanceOf(owner);
-        
-        vm.expectEmit(true, false, false, true);
-        emit TokensRescued(address(clawn), 1000 * 1e18);
-        
-        pool.rescue(address(clawn), 1000 * 1e18);
-        
-        assertEq(clawn.balanceOf(owner), ownerBefore + 1000 * 1e18);
     }
     
     // ============ View Function Tests ============
@@ -466,10 +669,11 @@ contract ClownPrizePoolTest is Test {
         pool.fundRound(roundId, totalPool);
         
         // Before distribution
-        (uint256 burned, uint256 toTreasury, uint256 toStreak, uint256 balance) = pool.getStats();
+        (uint256 burned, uint256 toTreasury, uint256 toStreak, uint256 allocated, uint256 balance) = pool.getStats();
         assertEq(burned, 0);
         assertEq(toTreasury, 0);
         assertEq(toStreak, 0);
+        assertEq(allocated, totalPool);
         assertEq(balance, totalPool);
         
         // Distribute
@@ -481,11 +685,28 @@ contract ClownPrizePoolTest is Test {
         pool.distribute(roundId, winners, amounts);
         
         // After distribution
-        (burned, toTreasury, toStreak, balance) = pool.getStats();
+        (burned, toTreasury, toStreak, allocated, balance) = pool.getStats();
         assertEq(burned, 10_000 * 1e18);
         assertEq(toTreasury, 15_000 * 1e18);
         assertEq(toStreak, 5_000 * 1e18);
+        assertEq(allocated, 0);
         assertEq(balance, 0);
+    }
+    
+    function test_GetUnallocatedBalance() public {
+        // No funds
+        assertEq(pool.getUnallocatedBalance(), 0);
+        
+        // Send extra tokens
+        clawn.transfer(address(pool), 1000 * 1e18);
+        assertEq(pool.getUnallocatedBalance(), 1000 * 1e18);
+        
+        // Fund a round
+        clawn.approve(address(pool), ENTRY_FEE);
+        pool.fundRound(keccak256("round1"), ENTRY_FEE);
+        
+        // Unallocated is still just the extra
+        assertEq(pool.getUnallocatedBalance(), 1000 * 1e18);
     }
     
     // ============ Upgrade Tests ============
@@ -567,5 +788,32 @@ contract ClownPrizePoolTest is Test {
         
         assertEq(clawn.balanceOf(winner1), prize1);
         assertEq(clawn.balanceOf(winner2), prize2);
+    }
+    
+    function testFuzz_RefundCannotExceedFunded(uint256 funded, uint256 refund1, uint256 refund2) public {
+        funded = bound(funded, 1e18, 1e30);
+        refund1 = bound(refund1, 0, funded);
+        refund2 = bound(refund2, 0, funded);
+        
+        bytes32 roundId = keccak256(abi.encodePacked(funded, refund1, refund2));
+        
+        clawn.mint(owner, funded);
+        clawn.approve(address(pool), funded);
+        pool.fundRound(roundId, funded);
+        
+        address[] memory p = new address[](1);
+        p[0] = user1;
+        uint256[] memory a = new uint256[](1);
+        
+        // First refund
+        a[0] = refund1;
+        pool.refundRound(roundId, p, a);
+        
+        // Second refund
+        a[0] = refund2;
+        if (refund1 + refund2 > funded) {
+            vm.expectRevert();
+        }
+        pool.refundRound(roundId, p, a);
     }
 }
