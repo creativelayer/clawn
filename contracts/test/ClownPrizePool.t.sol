@@ -45,6 +45,7 @@ contract ClownPrizePoolTest is Test {
         uint256 toStreakPool
     );
     event RoundRefunded(bytes32 indexed roundId, uint256 totalRefunded);
+    event RoundClosed(bytes32 indexed roundId, uint256 unrefundedAmount);
     
     function setUp() public {
         clawn = new MockCLAWN();
@@ -70,7 +71,7 @@ contract ClownPrizePoolTest is Test {
         assertEq(pool.treasury(), treasury);
         assertEq(pool.streakPool(), streakPool);
         assertEq(pool.owner(), owner);
-        assertEq(pool.version(), "2.0.0");
+        assertEq(pool.version(), "2.1.0");
     }
     
     function test_CannotInitializeTwice() public {
@@ -340,6 +341,38 @@ contract ClownPrizePoolTest is Test {
         pool.distribute(roundId, winners, amounts);
     }
     
+    function test_CannotDistributePartiallyRefundedRound() public {
+        bytes32 roundId = keccak256("round1");
+        pool.createRound(roundId, ENTRY_FEE);
+        
+        // Two users enter
+        vm.startPrank(user1);
+        clawn.approve(address(pool), ENTRY_FEE);
+        pool.enterRound(roundId, keccak256("entry1"));
+        vm.stopPrank();
+        
+        vm.startPrank(user2);
+        clawn.approve(address(pool), ENTRY_FEE);
+        pool.enterRound(roundId, keccak256("entry2"));
+        vm.stopPrank();
+        
+        // Partial refund (only user1)
+        address[] memory participants = new address[](1);
+        participants[0] = user1;
+        uint256[] memory refundAmounts = new uint256[](1);
+        refundAmounts[0] = ENTRY_FEE;
+        pool.refundRound(roundId, participants, refundAmounts);
+        
+        // Try to distribute - should fail
+        address[] memory winners = new address[](1);
+        winners[0] = winner1;
+        uint256[] memory prizeAmounts = new uint256[](1);
+        prizeAmounts[0] = (ENTRY_FEE * 7000) / 10000; // 70% of remaining
+        
+        vm.expectRevert(abi.encodeWithSelector(ClownPrizePool.RoundPartiallyRefunded.selector, roundId));
+        pool.distribute(roundId, winners, prizeAmounts);
+    }
+    
     // ============ Refunds ============
     
     function test_RefundRound() public {
@@ -378,6 +411,30 @@ contract ClownPrizePoolTest is Test {
         assertEq(refunded, 2 * ENTRY_FEE);
         assertTrue(isComplete);
         assertEq(pool.totalAllocated(), 0);
+    }
+    
+    function test_CloseRefundedRoundEmitsEvent() public {
+        bytes32 roundId = keccak256("round1");
+        pool.createRound(roundId, ENTRY_FEE);
+        
+        // User enters
+        vm.startPrank(user1);
+        clawn.approve(address(pool), ENTRY_FEE);
+        pool.enterRound(roundId, keccak256("entry1"));
+        vm.stopPrank();
+        
+        // Partial refund (only half)
+        address[] memory participants = new address[](1);
+        participants[0] = user1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = ENTRY_FEE / 2;
+        pool.refundRound(roundId, participants, amounts);
+        
+        // Close the round - should emit event with unrefunded amount
+        vm.expectEmit(true, false, false, true);
+        emit RoundClosed(roundId, ENTRY_FEE / 2);
+        
+        pool.closeRefundedRound(roundId);
     }
     
     function test_CannotRefundMoreThanFunded() public {

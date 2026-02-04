@@ -82,6 +82,7 @@ contract ClownPrizePool is
         uint256 toStreakPool
     );
     event RoundRefunded(bytes32 indexed roundId, uint256 totalRefunded);
+    event RoundClosed(bytes32 indexed roundId, uint256 unrefundedAmount);
     event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
     event StreakPoolUpdated(address indexed oldPool, address indexed newPool);
     event TokensRescued(address indexed token, uint256 amount);
@@ -99,6 +100,7 @@ contract ClownPrizePool is
     error RefundExceedsFunded(bytes32 roundId, uint256 totalRefunded, uint256 funded);
     error InsufficientUnallocatedBalance(uint256 requested, uint256 available);
     error ZeroEntryFee();
+    error RoundPartiallyRefunded(bytes32 roundId);
 
     // ============ Initializer ============
     
@@ -185,6 +187,7 @@ contract ClownPrizePool is
         if (round.entryFee == 0) revert RoundNotFound(roundId);
         if (round.isComplete) revert RoundAlreadyComplete(roundId);
         if (round.funded == 0) revert RoundNotFunded(roundId);
+        if (round.refunded > 0) revert RoundPartiallyRefunded(roundId);
         
         uint256 totalFunded = round.funded;
         uint256 maxPrizes = (totalFunded * PRIZE_BPS) / BPS_DENOMINATOR;
@@ -292,8 +295,12 @@ contract ClownPrizePool is
         if (round.funded == 0) revert RoundNotFunded(roundId);
         if (round.refunded == 0) revert NoFundsToRefund(roundId);
         
+        uint256 unrefunded = round.funded - round.refunded;
+        
         round.isComplete = true;
         totalAllocated -= round.funded;
+        
+        emit RoundClosed(roundId, unrefunded);
     }
 
     // ============ Admin Functions ============
@@ -377,6 +384,11 @@ contract ClownPrizePool is
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
     
     function version() external pure returns (string memory) {
-        return "2.0.0";
+        return "2.1.0";
     }
+    
+    // ============ Storage Gap ============
+    
+    /// @dev Reserved storage slots for future upgrades
+    uint256[50] private __gap;
 }
