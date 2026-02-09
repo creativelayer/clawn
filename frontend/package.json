@@ -13,7 +13,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
     "@farcaster/miniapp-sdk": "^0.2.0",
-    "@privy-io/node": "^1.0.0",
+    "@privy-io/node": "^0.8.0",
     "@supabase/supabase-js": "^2.94.0",
     "@tanstack/react-query": "^5.62.0",
     "next": "14.2.21",
