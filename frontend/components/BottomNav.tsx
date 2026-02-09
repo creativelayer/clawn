@@ -16,7 +16,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-clown-bg/95 backdrop-blur border-t border-clown-purple/20 px-2 pb-[env(safe-area-inset-bottom)]">
-      <div className="flex justify-around items-center h-14 max-w-lg mx-auto">
+      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
           if (item.action) {
@@ -26,8 +26,8 @@ export default function BottomNav() {
                 onClick={() => swapToken()}
                 className="flex flex-col items-center gap-0.5 text-clown-yellow"
               >
-                <span className="text-lg">{item.icon}</span>
-                <span className="text-[10px]">{item.label}</span>
+                <span className="text-xl">{item.icon}</span>
+                <span className="text-xs font-medium">{item.label}</span>
               </button>
             );
           }
@@ -39,8 +39,8 @@ export default function BottomNav() {
                 active ? "text-clown-pink" : "text-white/50"
               }`}
             >
-              <span className="text-lg">{item.icon}</span>
-              <span className="text-[10px]">{item.label}</span>
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-xs font-medium">{item.label}</span>
             </Link>
           );
         })}
