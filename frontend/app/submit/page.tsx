@@ -2,19 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAccount, useConnect } from "wagmi";
+import { injected } from "wagmi/connectors";
 import RoastInput from "@/components/RoastInput";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import { useFarcaster } from "@/components/FarcasterProvider";
-import { sendEntryFee } from "@/lib/farcaster";
+import { useEnterRound } from "@/lib/useEnterRound";
 import { submitRoast, getActiveRound, Round } from "@/lib/api";
 import { ENTRY_FEE, ENTRY_FEE_WEI } from "@/lib/constants";
-
-// Prize pool address
-const PRIZE_POOL_ADDRESS = "0x79Bed28E6d195375C19e84350608eA3c4811D4B9";
+import { keccak256, toHex } from "viem";
 
 export default function SubmitPage() {
   const router = useRouter();
-  const { user, walletAddress, clawnBalance, clawnBalanceFormatted, signIn, isLoading, refreshBalance } = useFarcaster();
+  const { user, clawnBalance, clawnBalanceFormatted, signIn, isLoading, refreshBalance } = useFarcaster();
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+  const { enterRound, status: entryStatus, error: entryError, needsApproval } = useEnterRound();
+  
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -27,12 +31,26 @@ export default function SubmitPage() {
     getActiveRound().then(setRound);
   }, []);
 
+  // Connect wallet if not connected
+  useEffect(() => {
+    if (user && !isConnected) {
+      connect({ connector: injected() });
+    }
+  }, [user, isConnected, connect]);
+
   async function handleSubmit(text: string) {
     setError(null);
 
     // Check auth
     if (!user) {
       setError("Please sign in with Farcaster first");
+      return;
+    }
+
+    // Check wallet
+    if (!isConnected || !address) {
+      setError("Wallet not connected. Please try again.");
+      connect({ connector: injected() });
       return;
     }
 
@@ -50,25 +68,30 @@ export default function SubmitPage() {
 
     setSubmitting(true);
     try {
-      // 1. Send entry fee via SDK
-      const txHash = await sendEntryFee(PRIZE_POOL_ADDRESS);
-      if (!txHash) {
-        setError("Payment cancelled or failed");
+      // Convert UUID to bytes32 for contract
+      const roundIdBytes32 = keccak256(toHex(round.id));
+      
+      // 1. Enter round on-chain (handles approval + entry)
+      const result = await enterRound(roundIdBytes32);
+      
+      if (!result.success) {
+        setError(entryError || "Transaction failed or cancelled");
         setSubmitting(false);
         return;
       }
 
-      // 2. Submit roast to backend with user info
-      const result = await submitRoast(round.id, text, user.fid, txHash, {
+      // 2. Submit roast to backend with tx hash
+      const apiResult = await submitRoast(round.id, text, user.fid, result.txHash || "on-chain", {
         username: user.username,
         displayName: user.displayName,
         pfpUrl: user.pfpUrl,
-        walletAddress: walletAddress || undefined,
+        walletAddress: address,
+        entryId: result.entryId,
       });
 
       // Check for API error
-      if ("error" in result) {
-        setError(result.error);
+      if ("error" in apiResult) {
+        setError(apiResult.error);
         setSubmitting(false);
         return;
       }
@@ -85,6 +108,17 @@ export default function SubmitPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Get button text based on state
+  function getButtonText(): string {
+    if (submitting) {
+      if (entryStatus === "approving") return "Approving $CLAWN...";
+      if (entryStatus === "entering") return "Entering round...";
+      return "Processing...";
+    }
+    if (needsApproval) return `Approve & Submit (${ENTRY_FEE.toLocaleString()} CLAWN)`;
+    return `Submit Roast (${ENTRY_FEE.toLocaleString()} CLAWN)`;
   }
 
   // Success state
@@ -132,7 +166,7 @@ export default function SubmitPage() {
       <h1 className="text-2xl font-bold text-center glow-pink text-clown-pink">🎤 Drop Your Roast</h1>
       
       <p className="text-center text-sm text-white/50">
-        Today&apos;s theme: <span className="text-clown-yellow">Roast your own portfolio 🤡</span>
+        Today&apos;s theme: <span className="text-clown-yellow">{round?.theme || "Roast your own portfolio 🤡"}</span>
       </p>
 
       {/* Balance display */}
@@ -148,8 +182,21 @@ export default function SubmitPage() {
         )}
       </div>
 
+      {/* Approval notice */}
+      {needsApproval && hasEnoughBalance && (
+        <div className="bg-clown-purple/20 border border-clown-purple/50 rounded-lg p-3 text-center">
+          <p className="text-clown-purple text-sm">
+            ℹ️ First time? You&apos;ll need to approve $CLAWN spending.
+          </p>
+        </div>
+      )}
+
       {/* Roast input */}
-      <RoastInput onSubmit={handleSubmit} disabled={submitting || !hasEnoughBalance} />
+      <RoastInput 
+        onSubmit={handleSubmit} 
+        disabled={submitting || !hasEnoughBalance}
+        buttonText={getButtonText()}
+      />
 
       {/* Error message */}
       {error && (
@@ -160,12 +207,13 @@ export default function SubmitPage() {
 
       {/* Fee info */}
       <p className="text-center text-xs text-white/30">
-        Entry fee: {ENTRY_FEE.toLocaleString()} $CLAWN · Deducted on submit
+        Entry fee: {ENTRY_FEE.toLocaleString()} $CLAWN · Paid directly to prize pool contract
       </p>
 
       {/* Signed in as */}
       <p className="text-center text-xs text-white/30">
         Signed in as <span className="text-clown-pink">@{user.username || `fid:${user.fid}`}</span>
+        {address && <span className="text-white/20"> · {address.slice(0, 6)}...{address.slice(-4)}</span>}
       </p>
     </div>
   );

@@ -7,9 +7,11 @@ const MAX_CHARS = 280;
 export default function RoastInput({
   onSubmit,
   disabled,
+  buttonText = "🎪 Submit Roast (50,000 $CLAWN)",
 }: {
   onSubmit: (text: string) => void;
   disabled?: boolean;
+  buttonText?: string;
 }) {
   const [text, setText] = useState("");
 
@@ -45,7 +47,7 @@ export default function RoastInput({
         disabled={disabled || overLimit || !text.trim()}
         className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed"
       >
-        🎪 Submit Roast (50,000 $CLAWN)
+        {buttonText}
       </button>
     </div>
   );

@@ -91,6 +91,7 @@ export async function submitRoast(
     displayName?: string;
     pfpUrl?: string;
     walletAddress?: string;
+    entryId?: string;
   }
 ): Promise<{ id: string } | { error: string }> {
   try {
