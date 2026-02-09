@@ -3,7 +3,8 @@ import { createPublicClient, createWalletClient, http, keccak256, toHex } from "
 import { base } from "viem/chains";
 import { PrivyClient } from "@privy-io/node";
 import { createViemAccount } from "@privy-io/node/viem";
-import { PRIZE_POOL_ABI, PRIZE_POOL_ADDRESS } from "@/lib/contracts";
+import { PRIZE_POOL_ADDRESS } from "@/lib/contracts";
+import { createServerClient } from "@/lib/supabase";
 
 const WALLET_ID = "ia5n10ug5xeyy2fxbareo1ar";
 const WALLET_ADDRESS = "0x79Bed28E6d195375C19e84350608eA3c4811D4B9";
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { roundId, entryFee } = body;
+    const { roundId, entryFee, theme, durationHours = 24 } = body;
 
     if (!roundId || !entryFee) {
       return NextResponse.json({ error: "Missing roundId or entryFee" }, { status: 400 });
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
       transport: http("https://mainnet.base.org"),
     });
 
-    // Call createRound on the contract
+    // Step 1: Create round on-chain
     const txHash = await walletClient.writeContract({
       address: PRIZE_POOL_ADDRESS,
       abi: [
@@ -87,12 +88,38 @@ export async function POST(req: NextRequest) {
     // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
+    // Step 2: Create/update round in database
+    const supabase = createServerClient();
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
+
+    const { data: dbRound, error: dbError } = await supabase
+      .from("rounds")
+      .upsert({
+        id: roundId,
+        theme: theme || "Roast your own portfolio 🤡",
+        starts_at: now.toISOString(),
+        ends_at: endsAt.toISOString(),
+        prize_pool: 0,
+        status: "active",
+        winner_fid: null,
+      })
+      .select()
+      .single();
+
+    if (dbError) {
+      console.error("Database error:", dbError);
+      // Don't fail - on-chain tx succeeded
+    }
+
     return NextResponse.json({
       success: true,
       txHash,
       roundIdBytes32,
       entryFeeWei: entryFeeWei.toString(),
       blockNumber: receipt.blockNumber.toString(),
+      database: dbRound ? "created" : "failed",
+      round: dbRound,
     });
   } catch (e: any) {
     console.error("Create round failed:", e);
