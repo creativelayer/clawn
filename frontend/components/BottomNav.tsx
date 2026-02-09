@@ -27,7 +27,7 @@ export default function BottomNav() {
                 className="flex flex-col items-center gap-0.5 text-clown-yellow"
               >
                 <span className="text-xl">{item.icon}</span>
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-sm font-medium">{item.label}</span>
               </button>
             );
           }
@@ -40,7 +40,7 @@ export default function BottomNav() {
               }`}
             >
               <span className="text-xl">{item.icon}</span>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-sm font-medium">{item.label}</span>
             </Link>
           );
         })}
