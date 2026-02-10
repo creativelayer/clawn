@@ -41,6 +41,12 @@ export function useEnterRound() {
       }
 
       const provider = await sdk.wallet.getEthereumProvider();
+      if (!provider) {
+        setError("Wallet provider not available");
+        setStatus("error");
+        return { success: false };
+      }
+      
       const accounts = await provider.request({ method: "eth_requestAccounts" }) as string[];
       
       if (!accounts || accounts.length === 0) {
