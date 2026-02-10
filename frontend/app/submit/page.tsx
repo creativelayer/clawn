@@ -6,7 +6,7 @@ import RoastInput from "@/components/RoastInput";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import { useFarcaster } from "@/components/FarcasterProvider";
 import { useEnterRound } from "@/lib/useEnterRound";
-import { submitRoast, getActiveRound, checkEligibility, Round } from "@/lib/api";
+import { reserveRoast, confirmRoast, getActiveRound, Round } from "@/lib/api";
 import { ENTRY_FEE, ENTRY_FEE_WEI } from "@/lib/constants";
 import { keccak256, toHex } from "viem";
 
@@ -52,10 +52,16 @@ export default function SubmitPage() {
 
     setSubmitting(true);
     try {
-      // 0. Check eligibility BEFORE taking payment!
-      const eligibility = await checkEligibility(round.id, user.fid);
-      if (!eligibility.eligible) {
-        setError(eligibility.reason || "You cannot submit to this round");
+      // 1. Reserve roast slot BEFORE payment (atomic duplicate check)
+      const reservation = await reserveRoast(round.id, text, user.fid, {
+        username: user.username,
+        displayName: user.displayName,
+        pfpUrl: user.pfpUrl,
+        walletAddress: address || undefined,
+      });
+
+      if ("error" in reservation) {
+        setError(reservation.error);
         setSubmitting(false);
         return;
       }
@@ -63,36 +69,31 @@ export default function SubmitPage() {
       // Convert UUID to bytes32 for contract
       const roundIdBytes32 = keccak256(toHex(round.id));
       
-      // 1. Enter round on-chain (handles approval + entry)
+      // 2. Enter round on-chain (handles approval + entry)
       const result = await enterRound(roundIdBytes32);
       
       if (!result.success) {
-        // Note: entryError is set async in the hook, so we need a fallback
-        setError("Transaction failed or was cancelled. Please try again.");
+        // Payment failed - pending roast remains, user can retry
+        setError("Transaction failed or was cancelled. Your roast is saved - try payment again.");
         setSubmitting(false);
         return;
       }
 
-      // 2. Submit roast to backend with tx hash
-      const apiResult = await submitRoast(round.id, text, user.fid, result.txHash || "on-chain", {
-        username: user.username,
-        displayName: user.displayName,
-        pfpUrl: user.pfpUrl,
-        walletAddress: address || undefined,
-        entryId: result.entryId,
-      });
+      // 3. Confirm roast with tx hash
+      const confirmation = await confirmRoast(reservation.id, result.txHash || "on-chain", user.fid);
 
-      // Check for API error
-      if ("error" in apiResult) {
-        setError(apiResult.error);
+      if ("error" in confirmation) {
+        // Rare: payment succeeded but confirmation failed
+        // The roast is still pending, can be confirmed via webhook later
+        setError("Payment confirmed but submission failed. Contact support with tx: " + result.txHash);
         setSubmitting(false);
         return;
       }
 
-      // 3. Capture AI feedback if available
-      if ("aiScore" in apiResult && "aiFeedback" in apiResult) {
-        setAiScore(apiResult.aiScore as number);
-        setAiFeedback(apiResult.aiFeedback as string);
+      // 4. Capture AI feedback if available
+      if ("aiScore" in confirmation && "aiFeedback" in confirmation) {
+        setAiScore(confirmation.aiScore as number);
+        setAiFeedback(confirmation.aiFeedback as string);
       }
 
       // 4. Refresh balance

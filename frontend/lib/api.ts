@@ -164,3 +164,55 @@ export async function checkEligibility(
     return { eligible: false, reason: "Network error" };
   }
 }
+
+// Reserve a roast slot (creates pending record) - call BEFORE payment
+export async function reserveRoast(
+  roundId: string,
+  text: string,
+  fid: number,
+  userInfo?: {
+    username?: string;
+    displayName?: string;
+    pfpUrl?: string;
+    walletAddress?: string;
+  }
+): Promise<{ id: string; pending: boolean } | { error: string }> {
+  try {
+    const res = await fetch(`${getApiBase()}/api/roasts/reserve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roundId, text, fid, ...userInfo }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || "Failed to reserve roast" };
+    }
+    return data;
+  } catch (e) {
+    console.error("Failed to reserve roast:", e);
+    return { error: "Network error" };
+  }
+}
+
+// Confirm a pending roast with tx hash - call AFTER payment
+export async function confirmRoast(
+  roastId: string,
+  txHash: string,
+  fid: number
+): Promise<{ id: string; confirmed: boolean; aiScore?: number; aiFeedback?: string } | { error: string }> {
+  try {
+    const res = await fetch(`${getApiBase()}/api/roasts/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roastId, txHash, fid }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: data.error || "Failed to confirm roast" };
+    }
+    return data;
+  } catch (e) {
+    console.error("Failed to confirm roast:", e);
+    return { error: "Network error" };
+  }
+}
