@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useConnect } from "wagmi";
-import { injected } from "wagmi/connectors";
 import RoastInput from "@/components/RoastInput";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import { useFarcaster } from "@/components/FarcasterProvider";
@@ -15,9 +13,7 @@ import { keccak256, toHex } from "viem";
 export default function SubmitPage() {
   const router = useRouter();
   const { user, clawnBalance, clawnBalanceFormatted, signIn, isLoading, refreshBalance } = useFarcaster();
-  const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
-  const { enterRound, status: entryStatus, error: entryError, needsApproval } = useEnterRound();
+  const { enterRound, status: entryStatus, error: entryError, address } = useEnterRound();
   
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,26 +27,12 @@ export default function SubmitPage() {
     getActiveRound().then(setRound);
   }, []);
 
-  // Connect wallet if not connected
-  useEffect(() => {
-    if (user && !isConnected) {
-      connect({ connector: injected() });
-    }
-  }, [user, isConnected, connect]);
-
   async function handleSubmit(text: string) {
     setError(null);
 
     // Check auth
     if (!user) {
       setError("Please sign in with Farcaster first");
-      return;
-    }
-
-    // Check wallet
-    if (!isConnected || !address) {
-      setError("Wallet not connected. Please try again.");
-      connect({ connector: injected() });
       return;
     }
 
@@ -85,7 +67,7 @@ export default function SubmitPage() {
         username: user.username,
         displayName: user.displayName,
         pfpUrl: user.pfpUrl,
-        walletAddress: address,
+        walletAddress: address || undefined,
         entryId: result.entryId,
       });
 
@@ -113,12 +95,13 @@ export default function SubmitPage() {
   // Get button text based on state
   function getButtonText(): string {
     if (submitting) {
+      if (entryStatus === "connecting") return "Connecting wallet...";
+      if (entryStatus === "checking") return "Checking approval...";
       if (entryStatus === "approving") return "Approving $CLAWN...";
       if (entryStatus === "entering") return "Entering round...";
       return "Processing...";
     }
-    if (needsApproval) return `Approve & Submit (${ENTRY_FEE.toLocaleString()} CLAWN)`;
-    return `Submit Roast (${ENTRY_FEE.toLocaleString()} CLAWN)`;
+    return `🎪 Submit Roast (${ENTRY_FEE.toLocaleString()} CLAWN)`;
   }
 
   // Success state
@@ -166,7 +149,7 @@ export default function SubmitPage() {
       <h1 className="text-2xl font-bold text-center glow-pink text-clown-pink">🎤 Drop Your Roast</h1>
       
       <p className="text-center text-sm text-white/50">
-        Today&apos;s theme: <span className="text-clown-yellow">{round?.theme || "Roast your own portfolio 🤡"}</span>
+        Today&apos;s theme: <span className="text-clown-yellow">{round?.theme || "Loading..."}</span>
       </p>
 
       {/* Balance display */}
@@ -181,15 +164,6 @@ export default function SubmitPage() {
           </div>
         )}
       </div>
-
-      {/* Approval notice */}
-      {needsApproval && hasEnoughBalance && (
-        <div className="bg-clown-purple/20 border border-clown-purple/50 rounded-lg p-3 text-center">
-          <p className="text-clown-purple text-sm">
-            ℹ️ First time? You&apos;ll need to approve $CLAWN spending.
-          </p>
-        </div>
-      )}
 
       {/* Roast input */}
       <RoastInput 
