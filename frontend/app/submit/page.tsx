@@ -57,7 +57,8 @@ export default function SubmitPage() {
       const result = await enterRound(roundIdBytes32);
       
       if (!result.success) {
-        setError(entryError || "Transaction failed or cancelled");
+        // Note: entryError is set async in the hook, so we need a fallback
+        setError("Transaction failed or was cancelled. Please try again.");
         setSubmitting(false);
         return;
       }
@@ -173,9 +174,9 @@ export default function SubmitPage() {
       />
 
       {/* Error message */}
-      {error && (
+      {(error || entryError) && (
         <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-center">
-          <p className="text-red-400 text-sm">{error}</p>
+          <p className="text-red-400 text-sm">{error || entryError}</p>
         </div>
       )}
 
