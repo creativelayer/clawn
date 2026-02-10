@@ -88,11 +88,17 @@ export async function POST(req: NextRequest) {
     // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
-    // Step 2: Create/update round in database
+    // Step 2: End any existing active rounds
     const supabase = createServerClient();
     const now = new Date();
     const endsAt = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
 
+    await supabase
+      .from("rounds")
+      .update({ status: "ended" })
+      .eq("status", "active");
+
+    // Step 3: Create new round in database
     const { data: dbRound, error: dbError } = await supabase
       .from("rounds")
       .upsert({
