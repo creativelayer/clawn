@@ -19,6 +19,8 @@ export default function SubmitPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [round, setRound] = useState<Round | null>(null);
+  const [aiScore, setAiScore] = useState<number | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
 
   const hasEnoughBalance = clawnBalance >= ENTRY_FEE_WEI;
 
@@ -79,12 +81,18 @@ export default function SubmitPage() {
         return;
       }
 
-      // 3. Refresh balance
+      // 3. Capture AI feedback if available
+      if ("aiScore" in apiResult) {
+        setAiScore(apiResult.aiScore as number);
+        setAiFeedback(apiResult.aiFeedback as string);
+      }
+
+      // 4. Refresh balance
       await refreshBalance();
 
-      // 4. Show success
+      // 5. Show success (longer delay to read feedback)
       setSuccess(true);
-      setTimeout(() => router.push("/"), 2000);
+      setTimeout(() => router.push("/"), 5000);
     } catch (e) {
       console.error(e);
       setError("Something went wrong. Try again?");
@@ -108,10 +116,26 @@ export default function SubmitPage() {
   // Success state
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 px-4">
         <span className="text-6xl">🎪</span>
         <h2 className="text-2xl font-bold glow-yellow text-clown-yellow">Roast Submitted!</h2>
-        <p className="text-white/50 text-sm">May the funniest clown win...</p>
+        
+        {aiScore !== null && (
+          <div className="card w-full max-w-sm text-center space-y-3 py-4">
+            <p className="text-xs text-white/40 uppercase tracking-widest">Judge&apos;s Score</p>
+            <p className={`text-5xl font-bold ${
+              aiScore >= 70 ? "text-clown-yellow glow-yellow" : 
+              aiScore >= 50 ? "text-white" : "text-red-400"
+            }`}>
+              {aiScore}
+            </p>
+            {aiFeedback && (
+              <p className="text-clown-pink italic text-sm">&ldquo;{aiFeedback}&rdquo;</p>
+            )}
+          </div>
+        )}
+        
+        <p className="text-white/50 text-sm">Redirecting to home...</p>
       </div>
     );
   }

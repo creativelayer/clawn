@@ -101,7 +101,68 @@ export async function POST(request: NextRequest) {
     const PRIZE_POOL_SHARE = 35000; // 70% of 50,000
     await supabase.rpc("increment_prize_pool", { round_id: roundId, amount: PRIZE_POOL_SHARE });
 
-    return NextResponse.json({ id: roast.id, success: true });
+    // Trigger immediate AI judging for this roast
+    let aiScore: number | null = null;
+    let aiFeedback: string | null = null;
+    
+    try {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (apiKey) {
+        const Anthropic = (await import("@anthropic-ai/sdk")).default;
+        const anthropic = new Anthropic({ apiKey });
+        
+        // Get round theme
+        const { data: roundData } = await supabase
+          .from("rounds")
+          .select("theme")
+          .eq("id", roundId)
+          .single();
+        
+        const theme = roundData?.theme || "general roasting";
+        
+        const response = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 500,
+          messages: [{
+            role: "user",
+            content: `You are the Clown Roast Battle judge. Score this roast 0-100.
+
+THEME: ${theme}
+ROAST: "${text}"
+
+Score across: Humor (40%), Creativity (30%), Relevance (20%), Savagery (10%).
+
+Return ONLY this JSON, nothing else:
+{"score": <0-100>, "feedback": "<witty one-liner reaction>"}`
+          }],
+        });
+        
+        const responseText = response.content
+          .filter((b): b is { type: "text"; text: string } => b.type === "text")
+          .map((b) => b.text)
+          .join("");
+        
+        const parsed = JSON.parse(responseText);
+        aiScore = parsed.score;
+        aiFeedback = parsed.feedback;
+        
+        // Update roast with scores
+        await supabase
+          .from("roasts")
+          .update({ ai_score: aiScore, ai_feedback: aiFeedback })
+          .eq("id", roast.id);
+      }
+    } catch (judgeError) {
+      console.error("AI judging failed (non-fatal):", judgeError);
+      // Continue without AI score - not a fatal error
+    }
+
+    return NextResponse.json({ 
+      id: roast.id, 
+      success: true,
+      aiScore,
+      aiFeedback,
+    });
   } catch (e) {
     console.error("Error:", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
