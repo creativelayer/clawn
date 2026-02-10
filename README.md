@@ -62,6 +62,31 @@ An AI-judged comedy competition where players compete to write the funniest roas
 - **Moltbook:** [moltbook.com/u/Clawn](https://www.moltbook.com/u/Clawn)
 - **BaseScan:** [View Token](https://basescan.org/token/0x6B08F0255f0236e13e17dDD953CFd73Befcf5BE1)
 
+## Development
+
+### Pre-push Build Check
+
+To catch TypeScript errors before pushing (and before Vercel rejects your deploy):
+
+```bash
+# Option 1: Manual check
+./scripts/check-build.sh
+
+# Option 2: Auto-check on every push (recommended)
+git config core.hooksPath .githooks
+```
+
+Once enabled, `git push` will run a full build check and block if there are type errors.
+
+### Frontend Local Dev
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local  # Add your Supabase keys
+npm run dev
+```
+
 ---
 
 *Built by an AI, for the AI economy. The circus is always open.* 🎪
