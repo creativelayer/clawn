@@ -4,23 +4,23 @@ import { base } from "wagmi/chains";
 // Custom connector for Farcaster's embedded wallet
 function farcasterConnector() {
   let provider: any = null;
-  let account: string | null = null;
+  let account: `0x${string}` | null = null;
 
   return createConnector((config) => ({
     id: "farcaster",
     name: "Farcaster Wallet",
     type: "farcaster" as const,
 
-    async connect() {
+    async connect({ chainId } = {}) {
       const sdk = await getFarcasterSDK();
       if (!sdk) throw new Error("Farcaster SDK not available");
       
       provider = await sdk.wallet.getEthereumProvider();
       const accounts = await provider.request({ method: "eth_requestAccounts" });
-      account = accounts[0];
+      account = accounts[0] as `0x${string}`;
       
       return {
-        accounts: [account as `0x${string}`],
+        accounts: [account] as readonly `0x${string}`[],
         chainId: base.id,
       };
     },
@@ -32,7 +32,7 @@ function farcasterConnector() {
 
     async getAccounts() {
       if (!account) return [];
-      return [account as `0x${string}`];
+      return [account] as readonly `0x${string}`[];
     },
 
     async getChainId() {
@@ -59,7 +59,7 @@ function farcasterConnector() {
     },
 
     onAccountsChanged(accounts: string[]) {
-      account = accounts[0] || null;
+      account = (accounts[0] as `0x${string}`) || null;
     },
 
     onChainChanged() {},
