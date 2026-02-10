@@ -138,8 +138,8 @@ Return ONLY this JSON, nothing else:
         });
         
         const responseText = response.content
-          .filter((b): b is { type: "text"; text: string } => b.type === "text")
-          .map((b) => b.text)
+          .filter((b) => b.type === "text")
+          .map((b) => "text" in b ? b.text : "")
           .join("");
         
         const parsed = JSON.parse(responseText);

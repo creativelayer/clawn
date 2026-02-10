@@ -82,7 +82,7 @@ export default function SubmitPage() {
       }
 
       // 3. Capture AI feedback if available
-      if ("aiScore" in apiResult) {
+      if ("aiScore" in apiResult && "aiFeedback" in apiResult) {
         setAiScore(apiResult.aiScore as number);
         setAiFeedback(apiResult.aiFeedback as string);
       }
