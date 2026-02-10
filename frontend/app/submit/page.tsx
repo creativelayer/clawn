@@ -6,7 +6,7 @@ import RoastInput from "@/components/RoastInput";
 import BuyClawnButton from "@/components/BuyClawnButton";
 import { useFarcaster } from "@/components/FarcasterProvider";
 import { useEnterRound } from "@/lib/useEnterRound";
-import { submitRoast, getActiveRound, Round } from "@/lib/api";
+import { submitRoast, getActiveRound, checkEligibility, Round } from "@/lib/api";
 import { ENTRY_FEE, ENTRY_FEE_WEI } from "@/lib/constants";
 import { keccak256, toHex } from "viem";
 
@@ -52,6 +52,14 @@ export default function SubmitPage() {
 
     setSubmitting(true);
     try {
+      // 0. Check eligibility BEFORE taking payment!
+      const eligibility = await checkEligibility(round.id, user.fid);
+      if (!eligibility.eligible) {
+        setError(eligibility.reason || "You cannot submit to this round");
+        setSubmitting(false);
+        return;
+      }
+
       // Convert UUID to bytes32 for contract
       const roundIdBytes32 = keccak256(toHex(round.id));
       

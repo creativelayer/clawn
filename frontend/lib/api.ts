@@ -145,3 +145,22 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     return [];
   }
 }
+
+// Check if user can submit to a round (before taking payment!)
+export async function checkEligibility(
+  roundId: string,
+  fid: number
+): Promise<{ eligible: boolean; reason?: string }> {
+  try {
+    const res = await fetch(
+      `${getApiBase()}/api/roasts/check?roundId=${roundId}&fid=${fid}`
+    );
+    if (!res.ok) {
+      return { eligible: false, reason: "Failed to check eligibility" };
+    }
+    return res.json();
+  } catch (e) {
+    console.error("Failed to check eligibility:", e);
+    return { eligible: false, reason: "Network error" };
+  }
+}
